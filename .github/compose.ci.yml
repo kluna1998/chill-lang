@@ -1,0 +1,18 @@
+# Explicit Linux CI-only overlay; normal Compose and dev.sh do not load it.
+services:
+  backend:
+    environment:
+      FRONTEND_HOST: http://localhost:8000
+      OPENAI_ENABLED: "false"
+      OPENAI_API_KEY: ""
+  playwright:
+    # localhost is a secure context for WebCrypto, used by reading progress.
+    # The application's public deployment uses HTTPS; do not change its logic.
+    network_mode: host
+    ports: !reset []
+    environment:
+      PLAYWRIGHT_BASE_URL: http://localhost:8000
+      VITE_API_URL: http://localhost:8000
+      MAILPIT_HOST: http://localhost:8025
+    volumes:
+      - ./frontend/playwright-report:/app/frontend/playwright-report

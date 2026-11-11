@@ -2,28 +2,52 @@ name: Test Docker Compose
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
 permissions:
   contents: read
 
-jobs:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+env:
+  COMPOSE_PROJECT_NAME: chill-lang-ci
+  PROJECT_NAME: Chill-Lang CI
+  SECRET_KEY: ci-only-signing-key-not-used-outside-tests-123456789
+  FIRST_SUPERUSER: ci-admin@example.com
+  FIRST_SUPERUSER_PASSWORD: ci-only-password-for-tests
+  POSTGRES_PASSWORD: ci-only-db-password
+  DATABASE_URL: postgresql://postgres:ci-only-db-password@localhost:5432/app
+  FASTAPI_ENV: development
+  SMTP_HOST: localhost
+  SMTP_PORT: "1025"
+  SMTP_TLS: "false"
+  EMAILS_FROM_EMAIL: ci@example.com
+  OPENAI_ENABLED: "false"
+  OPENAI_API_KEY: ""
+
+jobs:
   test-docker-compose:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: docker compose build
-      - run: docker compose down -v --remove-orphans
-      - run: docker compose run --rm backend bash scripts/prestart.sh
-      - run: docker compose up -d --wait backend adminer
-      - name: Test backend is up
-        run: curl http://localhost:8000/api/v1/utils/health-check
-      - name: Test frontend is up
-        run: curl http://localhost:8000
-      - run: docker compose down -v --remove-orphans
+      - name: Validate local Compose configuration
+        run: docker compose config --quiet
+      - name: Validate E2E Compose configuration
+        env:
+          COMPOSE_FILE: compose.yml:compose.override.yml:.github/compose.ci.yml
+        run: docker compose config --quiet
+      - name: Validate deployment Compose configuration
+        env:
+          DOMAIN: ci.example.test
+        run: docker compose -f compose.yml -f compose.deploy.yml config --quiet
+      - name: Validate shell syntax
+        run: bash -n dev.sh backend/scripts/*.sh scripts/generate-client.sh
+      # The image build, health checks and browser tests run once in playwright.yml.

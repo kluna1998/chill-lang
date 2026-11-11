@@ -53,7 +53,14 @@ test("Real TXT import, NLP, vocabulary and progress with only AI generation simu
     document.getSelection()!.addRange(range)
   })
   await expect(page.getByTestId("selected-text")).toHaveText("maison")
+  // The first real request also loads spaCy; wait for the API, not a UI timer.
+  const analysisResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/analyze") &&
+      response.request().method() === "POST",
+  )
   await page.getByRole("button", { name: "Analizar selección" }).click()
+  expect((await analysisResponse).status()).toBe(200)
   await expect(page.getByText("Lema: maison", { exact: true })).toBeVisible()
   const vocabularySave = page.waitForResponse(
     (response) =>

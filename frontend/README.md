@@ -1,198 +1,80 @@
-# FastAPI Project - Frontend
+# Chill-Lang — Frontend
 
-The frontend is built with [Vite](https://vitejs.dev/), [React](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [TanStack Query](https://tanstack.com/query), [TanStack Router](https://tanstack.com/router), [Tailwind CSS](https://tailwindcss.com/), and [shadcn/ui](https://ui.shadcn.com/).
+React y TypeScript con Vite, TanStack Router, React Query, Tailwind y componentes
+shadcn/ui. Se conservan autenticación, cuenta, administración, biblioteca, lector,
+vocabulario y progreso; no hay navegación de demostración de Items.
 
-## Requirements
+## Desarrollo
 
-- [Bun](https://bun.sh/)
-
-## Quick Start
-
-From the project root, install the dependencies and start the frontend development server:
+Requisitos: Bun 1, Node compatible con Vite 8 y un backend preparado. Desde la raíz:
 
 ```bash
-bun install
-bun run dev
+bun install --frozen-lockfile
 ```
 
-Then open <http://localhost:5173/> in your browser.
-
-Run `uv run bash scripts/prestart.sh` and `uv run fastapi dev` from the `backend` directory, with PostgreSQL running in Docker Compose. See [../development.md](../development.md) for the complete setup.
-
-To serve the frontend with FastAPI, run `bun run build` from the `frontend` directory and open `http://localhost:8000`.
-
-Check `frontend/package.json` to see the other available commands.
-
-## Removing the Frontend
-
-If you are developing an API-only app and want to remove the frontend, you can do it easily:
-
-- Remove the `./frontend` directory.
-
-- In the `backend/app/main.py` file, remove the `app.frontend()` call.
-
-- In the `backend/Dockerfile` file, remove the frontend build stage and the `COPY --from=frontend-build` instruction.
-
-- In the `compose.override.yml` file, remove the `playwright` service.
-
-- In the `.github/workflows/deploy.yml` file, remove the **Set up Bun**, **Install frontend dependencies**, and **Build frontend** steps.
-
-- In the `.fastapicloudignore` file, remove the `!backend/app/frontend/` entry.
-
-Done, you now have an API-only app. 🤓
-
-## Generate Client
-
-### Automatically
-
-- From the project root, run the script:
+Desde `frontend/`:
 
 ```bash
-bash ./scripts/generate-client.sh
+VITE_API_URL=http://localhost:8000 bun run dev
 ```
 
-- Commit the changes.
+Abre <http://localhost:5173>. Para el despliegue habitual con Docker y el frontend
+servido por FastAPI utiliza `bash dev.sh`; consulta [desarrollo](../development.md).
 
-### Manually
+## Build y calidad
 
-- Make sure the backend is running.
-
-- Download the OpenAPI JSON file from `http://localhost:8000/api/v1/openapi.json` and copy it to a new file `openapi.json` at the root of the `frontend` directory.
-
-- To generate the frontend client, run:
+Desde `frontend/`:
 
 ```bash
-bun run generate-client
+VITE_API_URL= bun run build
+bunx --no-install tsc --noEmit -p tsconfig.json
+bunx --no-install biome check src tests
 ```
 
-- Commit the changes.
+El build se escribe en `backend/app/frontend/`. Con `VITE_API_URL` vacío usa la API
+del mismo origen; cambiar variables del servidor no cambia la URL de un bundle ya
+compilado. El build comprueba la aplicación; el comando de TypeScript adicional
+incluye también las pruebas.
 
-Regenerate the client whenever backend changes affect the OpenAPI schema.
+## Cliente API
 
-## Using a Remote API
+`src/client/` se genera desde OpenAPI y permanece versionado. Se conserva
+`scripts/generate-client.sh`, pero el generador instalado utiliza una API de
+compilador que TypeScript 7 no exporta. Su compatibilidad está pendiente de revisión;
+esta limpieza no instala otra versión ni regenera el SDK en CI.
 
-By default, the built frontend uses the same origin as the FastAPI app. If you want to use a remote API while running the Vite development server, you can set the environment variable `VITE_API_URL` to the URL of the remote API. For example, you can set it in the `frontend/.env` file:
+Los cambios futuros del contrato deben actualizar el cliente con una combinación
+compatible y autorizada. No crees otro cliente HTTP ni edites los archivos generados
+como solución permanente. Conservamos la autenticación, errores y caché existentes.
 
-```env
-VITE_API_URL=https://my-domain.example.com
-```
+## E2E
 
-Then, when you run the frontend, it will use that URL as the base URL for the API.
-
-## Code Structure
-
-The frontend code is structured as follows:
-
-- `frontend/src` - The main frontend code.
-- `frontend/public` - Static assets.
-- `frontend/src/client` - The generated OpenAPI client.
-- `frontend/src/components` - The components of the frontend, including the shadcn/ui components in `frontend/src/components/ui`.
-- `frontend/src/hooks` - Custom hooks.
-- `frontend/src/lib` - Shared frontend utilities.
-- `frontend/src/routes` - The frontend routes and pages.
-
-## End-to-End Testing with Playwright
-
-The frontend includes initial end-to-end tests using Playwright. To run the tests, you need to have the Docker Compose stack running. Start the stack with the following command:
+Utiliza Chromium de Playwright, backend de pruebas, base desechable y Mailpit.
+Desde `frontend/`, con credenciales de administrador de esa instancia:
 
 ```bash
-docker compose run --rm backend bash scripts/prestart.sh
-docker compose up -d --wait backend
+PLAYWRIGHT_BASE_URL=http://localhost:8000 \
+VITE_API_URL=http://localhost:8000 \
+MAILPIT_HOST=http://localhost:8025 \
+bun run test --workers=1
 ```
 
-Then, you can run the tests with the following command:
+No ejecutes estas pruebas contra tu biblioteca habitual. Se conservan todos los
+tests activos. Los casos de carga, errores y respuestas obsoletas usan APIs
+simuladas; el recorrido de `mvp-integration.spec.ts` usa API, PostgreSQL y spaCy
+reales y simula únicamente la explicación de IA.
 
-```bash
-bunx playwright test
-```
+La imagen `Dockerfile.playwright` se alinea con la versión `1.64.1` de
+`@playwright/test` del lockfile. CI ejecuta un solo conjunto de navegador y guarda
+HTML y trazas como artefactos. No instala ni llama a un modelo de IA remoto.
 
-You can also run your tests in UI mode to see the browser and interact with it running:
+## Organización
 
-```bash
-bunx playwright test --ui
-```
+- `src/routes/`: biblioteca, libro, lectura, vocabulario, cuenta y autenticación.
+- `src/components/Books/`, `Chapters/`, `Reader/`: importación y lectura.
+- `src/hooks/`: consultas, mutaciones, autenticación y progreso.
+- `src/client/`: cliente generado; `src/components/ui/`: controles compartidos.
+- `tests/`: pruebas de interfaz e integración.
 
-To stop and remove the Docker Compose stack and clean the data created in tests, use the following command:
-
-```bash
-docker compose down -v
-```
-
-To update the tests, navigate to the tests directory and modify the existing test files or add new ones as needed.
-
-For more information on writing and running Playwright tests, refer to the official [Playwright documentation](https://playwright.dev/docs/intro).
-
-## Lector interactivo (fase 2)
-
-El contenido se conserva como **un único nodo de texto**, con `white-space:
-pre-wrap`. Las líneas en blanco originales separan los párrafos sin insertar
-caracteres ni reconstruir el contenido. Esto funciona igual para TXT y EPUB y
-mantiene fiable la correspondencia entre selección y texto almacenado.
-
-- `Reader/selection.ts` define `TextSelectionContext` y extrae la selección con
-  rangos DOM. Comprueba que ambos extremos están dentro del contenido, que
-  `textContent` coincide con el original y que el rango es exactamente el segmento
-  indicado por sus offsets. No busca la primera aparición de una palabra.
-- Los offsets `[startOffset, endOffset)` son **unidades UTF-16 de JavaScript**,
-  identificadas mediante `offsetUnit`. No equivalen necesariamente a los índices
-  de cadenas de Python: los caracteres como emoji ocupan dos unidades. La futura
-  integración NLP deberá convertirlos explícitamente o utilizar el texto y el
-  contexto incluidos, sin asumir otra unidad.
-- El contexto es un fragmento literal, con hasta 160 unidades a cada lado de la
-  selección, acotado por separaciones de párrafo cuando existen. Los extremos del
-  contexto no cortan pares sustitutos. No hay segmentación lingüística de frases.
-- `SelectableText` escucha la selección nativa (`selectionchange`) y espera 180 ms
-  para capturarla también al ajustar los tiradores táctiles o utilizar el teclado.
-  Las selecciones vacías, externas, múltiples o inconsistentes se ignoran. La
-  captura soporta rangos entre nodos de texto si su concatenación sigue siendo
-  exactamente el contenido original.
-- `ReadingContextPanel` presenta selección y contexto como texto, sin análisis
-  simulado. No mueve el foco ni bloquea la lectura. Se cierra con su botón o Escape.
-  En pantallas grandes aparece al lado; en móvil es un panel inferior de altura
-  limitada y el lector reserva espacio de desplazamiento para seguir leyendo.
-  No se ha validado aún en dispositivos físicos iOS/Android.
-- `ChapterReader` conserva los hooks y la navegación. El componente interactivo
-  se identifica por libro y capítulo: al navegar se descarta la selección, incluso
-  si el capítulo siguiente ya está en caché. Cerrar el panel limpia la selección
-  nativa para evitar que reaparezca.
-- `ReadingPreferences` ofrece tamaño, interlineado y familia serif/sans-serif con
-  los componentes UI existentes. Las preferencias viven en React, continúan al
-  navegar dentro del lector y se reinician al recargar o abandonar el componente.
-  No se escriben en localStorage ni se envían al backend.
-
-Las pruebas de `tests/reader.spec.ts` usan Playwright y el DOM real de Chromium:
-selección entre párrafos y elementos, offsets de palabras repetidas, acentos y
-emoji, entradas inválidas, navegación, cierre y preferencias. Las respuestas API
-se simulan en esas pruebas de navegador. No hay endpoints ni dependencias nuevos.
-
-## Análisis lingüístico (fase 3)
-
-El panel contextual añade **Analizar selección**. `useAnalyzeSelection` utiliza el
-cliente OpenAPI existente y envía únicamente offsets UTF-16 y los identificadores
-como parámetros de la ruta. El backend analiza el contenido persistido del capítulo.
-
-El panel muestra contexto, tokens, lema, POS, morfología y dependencia tal como los
-produce el modelo; distingue anotaciones ausentes de rasgos vacíos. No ofrece
-traducción ni corrige predicciones. Las limitaciones conocidas del modelo francés
-se documentan en `backend/README.md`.
-
-El análisis vive en una mutación local de TanStack Query, sin persistencia. El
-subcomponente está identificado por libro, capítulo y rango: una respuesta tardía
-no reemplaza el resultado de otra selección, y cerrar/navegar descarta el análisis.
-Se conservan el contexto original y los controles de lectura. Si la respuesta
-contiene un texto diferente del seleccionado, se pide reabrir el capítulo.
-
-## Explicación contextual (fase 4)
-
-`ReadingContextPanel` añade **Explicar con IA** sin reemplazar **Analizar selección**.
-`useExplainSelection` usa el cliente generado con los mismos identificadores y
-offsets UTF-16, sin enviar texto arbitrario ni anotaciones como fuente de verdad.
-La llamada es explícita, no se reintenta automáticamente y el botón queda
-bloqueado durante la petición. La mutación se descarta al cambiar la selección,
-cerrar el panel o navegar de capítulo; no invalida el análisis spaCy independiente.
-
-La traducción contextual se destaca; significado, gramática, traducción de oración
-e incertidumbre se muestran cuando están disponibles. Los valores se renderizan
-como texto, sin ejecutar HTML. La UI indica que la explicación puede contener errores.
-No se introduce ninguna clave OpenAI en Vite. La activación y evaluación real están
-documentadas en `backend/README.md`; los tests de navegador usan respuestas simuladas.
+Las fuentes de correo en `packages/react-email/` se conservan porque generan los
+HTML que el backend utiliza para recuperar contraseñas y crear cuentas.

@@ -1,138 +1,95 @@
-# FastAPI Project - Development
+# Chill-Lang — Desarrollo
 
-## Local Development
+La arquitectura y requisitos del MVP están en [README.md](README.md). Se mantiene
+FastAPI/SQLModel/Alembic, React/Vite/Bun, spaCy y el SDK de OpenAI; esta limpieza no
+modifica endpoints, modelos ni reglas de negocio.
 
-For local development, run PostgreSQL and Mailpit with Docker Compose, and run the FastAPI and Vite development servers locally.
+## Stack habitual
 
-Start the supporting services:
+Configura los archivos privados a partir de los ejemplos, sin sobrescribir archivos
+existentes. Desde la raíz:
 
 ```bash
+bash dev.sh
+```
+
+El script carga siempre `.env` y `.env.openai.local`, construye el backend (que
+compila React), espera PostgreSQL, aplica Alembic, inicializa el administrador y
+arranca `db`, `backend`, `proxy`, `adminer` y `mailpit`. Playwright queda fuera.
+
+- `bash dev.sh --rebuild`: detiene y reconstruye sin borrar los volúmenes.
+- `bash dev.sh --reset`: exige escribir `BORRAR` y elimina datos, volúmenes e imágenes locales.
+
+Se conserva su comprobación final: exige IA habilitada y una clave no vacía, pero
+no llama al proveedor. La aplicación permite leer y guardar vocabulario sin IA;
+el criterio adicional del lanzador no se ha modificado.
+
+## Arranque manual y ejecución sin IA
+
+Para no utilizar IA, conserva `OPENAI_ENABLED=false` y arranca los servicios
+explícitamente desde la raíz:
+
+```bash
+docker compose --env-file .env --env-file .env.openai.local up -d db mailpit
+docker compose --env-file .env --env-file .env.openai.local build backend
+docker compose --env-file .env --env-file .env.openai.local run --rm backend bash scripts/prestart.sh
+docker compose --env-file .env --env-file .env.openai.local up -d backend proxy adminer mailpit
+```
+
+El arranque del servidor por sí solo no aplica migraciones. `prestart.sh` contiene
+las migraciones y la inicialización que el lanzador también ejecuta explícitamente.
+
+## Python y Vite fuera de Docker
+
+No ejecutes simultáneamente el backend local y el de Compose en el puerto 8000.
+Desde la raíz instala solo las versiones fijadas:
+
+```bash
+uv sync --frozen --package app
+bun install --frozen-lockfile
 docker compose up -d db mailpit
 ```
 
-Then, from the `backend` directory, install the dependencies and prepare the database:
+Desde `backend/`:
 
 ```bash
-uv sync
-uv run bash scripts/prestart.sh
+uv run --frozen bash scripts/prestart.sh
+uv run --frozen fastapi dev
 ```
 
-Start the FastAPI development server:
+Desde `frontend/`, en otra terminal:
 
 ```bash
-uv run fastapi dev
+VITE_API_URL=http://localhost:8000 bun run dev
 ```
 
-In another terminal, from the project root, install the frontend dependencies and start the Vite development server:
+La aplicación de Vite está en <http://localhost:5173>; la API en
+<http://localhost:8000/docs>. Para servir React con FastAPI, compila desde `frontend/`
+con `VITE_API_URL= bun run build`. Esa variable se fija al compilar, no al arrancar
+un bundle ya generado.
 
-```bash
-bun install
-bun run dev
-```
+## Compose
 
-Now you can open these URLs:
+- `compose.yml`: servicios compartidos y volumen persistente de PostgreSQL.
+- `compose.override.yml`: desarrollo, puertos locales, Mailpit y sincronización con `watch`.
+- `compose.deploy.yml`: HTTPS y reinicios para un servidor remoto.
+- `.github/compose.ci.yml`: solo CI Linux; navegador en red host con URLs localhost (contexto seguro de WebCrypto), correo de pruebas e informes del navegador.
 
-Frontend development server: <http://localhost:5173>
+Compose carga los dos primeros archivos por defecto. El overlay de CI solo se
+carga al indicarlo explícitamente; el lanzador no lo utiliza. No ejecutes comandos
+de limpieza de volúmenes de la CI sobre tu proyecto de desarrollo.
 
-Backend API: <http://localhost:8000>
+## Calidad y pruebas
 
-Automatic interactive API documentation with Swagger UI: <http://localhost:8000/docs>
+Consulta los comandos y la preparación de una base aislada en el
+[README](README.md#verificación). La fixture de pytest elimina usuarios: tu base
+habitual no es una base de pruebas. Los E2E también crean usuarios y modifican datos.
 
-Mailpit: <http://localhost:8025>
+Se mantienen los hooks locales de `.pre-commit-config.yaml`, que pueden formatear
+archivos. El workflow `pre-commit` de CI ejecuta comprobaciones de solo lectura:
+no hace commits automáticos ni requiere aplicaciones de GitHub para publicar cambios.
+El hook del generador SDK sigue pendiente de resolver su incompatibilidad con
+TypeScript 7; no se ejecuta automáticamente en CI ni se han cambiado sus dependencias.
 
-The frontend development server uses the backend at `http://localhost:8000`, as configured in `frontend/.env`.
-
-### Frontend Served by FastAPI
-
-Build the frontend from the `frontend` directory:
-
-```bash
-bun run build
-```
-
-The build is written to `backend/app/frontend` and served by FastAPI at <http://localhost:8000>. Rebuild the frontend after making frontend changes.
-
-## Full Stack with Docker Compose
-
-To run the backend and built frontend in Docker Compose:
-
-```bash
-docker compose run --rm backend bash scripts/prestart.sh
-docker compose watch
-```
-
-Now you can open these URLs:
-
-Application, with the frontend and API served by FastAPI: <http://localhost:8000>
-
-Automatic interactive API documentation with Swagger UI: <http://localhost:8000/docs>
-
-Adminer, database web administration: <http://localhost:8080>
-
-Traefik UI, to see how the routes are being handled by the proxy: <http://localhost:8090>
-
-Mailpit: <http://localhost:8025>
-
-Stop a locally running FastAPI server before starting the Compose backend because both use port `8000`.
-
-**Note**: The first time you start the stack, it might take a minute for all the services to be ready. To monitor it, use `docker compose logs`, or `docker compose logs backend` for the backend service.
-
-## Mailpit
-
-[Mailpit](https://mailpit.axllent.org) captures emails sent during local development instead of delivering them. The local backend connects to it at `localhost:1025`, and the Compose backend connects to the `mailpit` service. Captured emails are available at <http://localhost:8025>.
-
-## Docker Compose Files and Environment Variables
-
-The main `compose.yml` file contains the configuration shared by the whole stack. Docker Compose loads it automatically.
-
-The `compose.override.yml` file adds local development settings, such as mounting the source code as a volume. Docker Compose also loads it automatically and applies it on top of `compose.yml`.
-
-The `compose.deploy.yml` file contains the deployment-specific settings, including HTTPS and automatic certificate handling. It is explicitly combined with `compose.yml` when deploying the application.
-
-The backend reads local settings from the `.env` file. Docker Compose also uses it for variable interpolation and passes the settings each container needs.
-
-After changing variables, make sure you restart the stack:
-
-```bash
-docker compose watch
-```
-
-## The `.env` File
-
-The tracked `.env` file contains local development defaults, passwords, and other configuration. Its hostnames use `localhost` for processes running on your machine. Docker Compose overrides hostnames such as the database and SMTP server with their Compose service names.
-
-Do not store deployment secrets in `.env`. Configure them as described in the [FastAPI Cloud deployment guide](./deployment.md) or the [Docker Compose deployment guide](./deployment-docker-compose.md).
-
-## Pre-commit Hooks and Code Linting
-
-The project uses [prek](https://prek.j178.dev/), a modern alternative to [pre-commit](https://pre-commit.com/), for code linting and formatting.
-
-You can find a file `.pre-commit-config.yaml` with configurations at the root of the project.
-
-### Install `prek` to Run Automatically
-
-`prek` is already part of the dependencies of the project.
-
-From the project root, install the Git hook so that `prek` runs automatically before each commit:
-
-```bash
-uv run prek install -f
-```
-
-The `-f` flag forces the installation, in case there was already a `pre-commit` hook previously installed.
-
-Now whenever you try to commit, for example with:
-
-```bash
-git commit
-```
-
-`prek` will check and format the code you are about to commit. If it modifies any files, add those files to Git again before committing.
-
-### Run `prek` Manually
-
-You can also run `prek` manually on all files from the project root:
-
-```bash
-uv run prek run --all-files
-```
+Las pruebas utilizan OpenAI simulado o desactivado. No deben necesitar tu clave ni
+consumir facturación. Mailpit captura el correo de pruebas en <http://localhost:8025>.

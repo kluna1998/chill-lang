@@ -85,11 +85,11 @@ fi
 echo "Iniciando PostgreSQL..."
 dc up -d --wait db
 
-echo "Inicializando administrador..."
-dc run --rm --no-deps backend python app/initial_data.py
-
 echo "Aplicando migraciones..."
 dc run --rm --no-deps backend alembic upgrade head
+
+echo "Inicializando administrador..."
+dc run --rm --no-deps backend python app/initial_data.py
 
 echo "Arrancando Chill-Lang..."
 dc up -d --no-build --wait "${SERVICES[@]}"

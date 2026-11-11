@@ -19,7 +19,7 @@ Cada usuario tiene una biblioteca privada, vocabulario personal y progreso de le
 
 La importación no conserva el archivo original ni reproduce la maquetación de EPUB.
 No incluye OCR, PDF, flashcards, SRS, gamificación, diccionarios ni orquestadores.
-El backend de demostración de Items permanece por compatibilidad, fuera de la interfaz.
+Los endpoints de demostración de Items ya no forman parte de la aplicación.
 
 ## Arquitectura y requisitos
 
@@ -52,25 +52,27 @@ Si esos archivos ya existen, edítalos sin sobrescribirlos. Configura en `.env`
 `changethis`. En desarrollo local, PostgreSQL se publica en `localhost:5432` y
 Mailpit en los puertos SMTP 1025 y web 8025.
 
-Reserva `.env.openai.local`, ignorado por Git, para la clave de OpenAI. El `.env`
-histórico del proyecto sigue versionado: no guardes allí esa clave ni la expongas
-mediante variables `VITE_`. Los archivos de ejemplo no contienen credenciales reales.
+Reserva `.env.openai.local`, ignorado por Git, para la clave de OpenAI. Los archivos privados `.env` y `.env.openai.local` están ignorados por Git;
+no expongas la clave mediante variables `VITE_`. Los archivos de ejemplo no contienen credenciales reales.
 
 ### Ejecutar con Docker Compose
 
-Desde la raíz, después de configurar los archivos:
+El lanzador existente prepara PostgreSQL, aplica migraciones, inicializa el
+administrador y arranca los servicios necesarios. No arranca Playwright:
 
 ```bash
-docker compose --env-file .env --env-file .env.openai.local up -d db mailpit
-docker compose --env-file .env --env-file .env.openai.local build backend
-docker compose --env-file .env --env-file .env.openai.local run --rm backend bash scripts/prestart.sh
-docker compose --env-file .env --env-file .env.openai.local up -d backend
+bash dev.sh
 ```
 
-`prestart.sh` aplica Alembic y crea el administrador inicial si no existe. El
-arranque habitual del backend no ejecuta ese script automáticamente.
+`bash dev.sh --rebuild` reconstruye sin caché y reinicia sin eliminar los datos.
+`bash dev.sh --reset` exige la confirmación `BORRAR` y elimina datos y volúmenes.
 
-- Aplicación y API: <http://localhost:8000>
+El lanzador actual exige IA habilitada y clave configurada al comprobar el estado
+final. Esa comprobación no hace una llamada a OpenAI. Para ejecutar la aplicación
+sin IA, utiliza el arranque manual descrito en [development.md](development.md).
+
+- Aplicación mediante el proxy: <http://localhost>
+- Aplicación y API directas: <http://localhost:8000>
 - Documentación interactiva: <http://localhost:8000/docs>
 - Mailpit: <http://localhost:8025>
 
@@ -232,6 +234,26 @@ solo intercepta la explicación de IA. Las pruebas de rangos DOM cargan el mismo
 en el test, conservando sus aserciones también con el frontend compilado.
 La prueba backend de integración recorre
 TXT y EPUB y simula únicamente el proveedor OpenAI.
+
+## CI del MVP
+
+- **Test Backend:** pytest, cobertura e informes, con configuración de pruebas explícita.
+- **pre-commit:** Ruff, mypy, ty, Biome, TypeScript y build, sin modificar ni publicar código.
+- **Playwright Tests:** un build Docker para aplicación y navegador, health checks y E2E.
+- **Test Docker Compose:** validación de los overlays y sintaxis de scripts, sin otro build.
+- **Zizmor** y **Dependabot:** se conservan para revisar workflows y actualizaciones.
+
+La CI utiliza datos desechables, no necesita `.env` privados y mantiene OpenAI
+apagado. `.github/compose.ci.yml` es exclusivo de pruebas; `dev.sh` no lo carga.
+La retirada de FastAPI Cloud no cambia el despliegue Docker Compose. El workflow
+manual de despliegue remoto permanece pendiente de revisar su configuración real.
+
+La generación del cliente sigue en revisión por la incompatibilidad entre el
+compilador API de TypeScript 7 y el generador instalado. La CI utiliza el cliente
+versionado; no cambia TypeScript ni regenera el SDK automáticamente. No se han
+retirado dependencias ni actualizado lockfiles durante esta limpieza.
+
+Detalles de los archivos retirados y conservados: [limpieza del template](docs/cleanup.md).
 
 Más detalles: [backend](backend/README.md), [frontend](frontend/README.md) y
 [desarrollo](development.md).

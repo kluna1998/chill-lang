@@ -68,6 +68,7 @@ class UsersPublic(SQLModel):
     data: list[UserPublic]
     count: int
 
+
 class BookBase(SQLModel):
     title: str = Field(min_length=1, max_length=255)
     author: str | None = Field(default=None, max_length=255)

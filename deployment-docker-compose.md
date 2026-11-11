@@ -1,11 +1,11 @@
-# FastAPI Project - Docker Compose Deployment
+# Chill-Lang — Despliegue remoto con Docker Compose
 
 You can deploy the project to your own remote server with Docker Compose. The deployment configuration includes Traefik to handle HTTPS and route incoming traffic to the application.
 
 ## Preparation
 
 * Have a remote server ready and available.
-* Configure DNS records pointing to the server for the application domain and any supporting service subdomains you want to expose, such as `fastapi-project.example.com` and `adminer.fastapi-project.example.com`.
+* Configure DNS records pointing to the server for the application domain and any supporting service subdomains you want to expose, such as `chill-lang.example.com` and `adminer.chill-lang.example.com`.
 * Install and configure [Docker](https://docs.docker.com/engine/install/) on the remote server (Docker Engine, not Docker Desktop).
 
 ## Copy the Code
@@ -23,8 +23,8 @@ The `--filter=":- .gitignore"` option tells `rsync` to use the same ignore rules
 Set the application domain, project name, and first superuser email:
 
 ```bash
-export DOMAIN=fastapi-project.example.com
-export PROJECT_NAME="Full Stack FastAPI Project"
+export DOMAIN=chill-lang.example.com
+export PROJECT_NAME="Chill-Lang"
 export FIRST_SUPERUSER=admin@example.com
 ```
 
@@ -62,7 +62,7 @@ The backend Docker image builds the frontend, so the server does not need Bun or
 
 ## Deploy with GitHub Actions
 
-The included `.github/workflows/deploy-docker-compose.yml` workflow runs the deployment commands on the server when manually triggered from GitHub Actions.
+El workflow manual `.github/workflows/deploy-docker-compose.yml` se conserva sin modificaciones. Su uso sigue pendiente de comprobar el runner y la configuración real del repositorio. Esta limpieza no ha ejecutado despliegues ni configurado secretos remotos.
 
 Use a self-hosted runner only for a repository whose contributors and workflow code you trust. GitHub recommends using self-hosted runners with private repositories because workflows execute directly on the runner machine.
 
@@ -120,10 +120,18 @@ When the runner is online, open the repository's **Actions** tab, select **Deplo
 
 ## URLs
 
-Replace `fastapi-project.example.com` with your domain.
+Replace `chill-lang.example.com` with your domain.
 
-Application (frontend and API): `https://fastapi-project.example.com`
+Application (frontend and API): `https://chill-lang.example.com`
 
-Interactive API docs: `https://fastapi-project.example.com/docs`
+Interactive API docs: `https://chill-lang.example.com/docs`
 
-Adminer: `https://adminer.fastapi-project.example.com`
+Adminer: `https://adminer.chill-lang.example.com`
+
+## Configuración de IA
+
+La configuración local de `dev.sh` no se transfiere automáticamente al servidor
+remoto. Antes de utilizar este despliegue, revisa explícitamente cómo proporcionar
+`OPENAI_ENABLED`, `OPENAI_MODEL` y `OPENAI_API_KEY` mediante configuración privada.
+El workflow remoto conservado no se ha ampliado para inyectarlos durante esta
+limpieza. No copies credenciales privadas al repositorio.
