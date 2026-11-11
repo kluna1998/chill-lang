@@ -49,5 +49,4 @@ Do not explain every line of code. Focus on helping me understand the design and
 2. Briefly explain the proposed approach.
 3. Ask for approval if a decision falls under Section 3.
 4. Implement the smallest necessary change.
-5. Run relevant tests.
 6. Summarize what was done and explain why.
