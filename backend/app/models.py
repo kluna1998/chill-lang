@@ -2,6 +2,7 @@ import uuid
 from datetime import UTC, datetime
 
 from pydantic import EmailStr
+from sqlalchemy import DateTime
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -53,6 +54,7 @@ class User(UserBase, table=True):
     hashed_password: str
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
     items: list[Item] = Relationship(back_populates="owner", cascade_delete=True)
+    books: list[Book] = Relationship(back_populates="owner", cascade_delete=True)
 
 
 # Properties to return via API, id is always required
@@ -104,6 +106,35 @@ class ItemsPublic(SQLModel):
     data: list[ItemPublic]
     count: int
 
+
+class BookBase(SQLModel):
+    title: str = Field(min_length=1, max_length=255)
+    author: str | None = Field(default=None, max_length=255)
+
+
+class Book(BookBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    owner_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+    owner: User | None = Relationship(back_populates="books")
+
+class BookCreate(BookBase):
+    pass
+
+
+class BookPublic(BookBase):
+    id: uuid.UUID
+    owner_id: uuid.UUID
+    created_at: datetime
+
+
+class BooksPublic(SQLModel):
+    data: list[BookPublic]
+    count: int
 
 # Generic message
 class Message(SQLModel):
