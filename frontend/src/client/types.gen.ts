@@ -5,6 +5,16 @@ export type ClientOptions = {
 };
 
 /**
+ * Body_books-import_epub_book
+ */
+export type Body_books_import_epub_book = {
+    /**
+     * File
+     */
+    file: Blob | File;
+};
+
+/**
  * Body_books-import_txt_book
  */
 export type Body_books_import_txt_book = {
@@ -1180,6 +1190,31 @@ export type booksImportTxtBookResponses = {
 };
 
 export type booksImportTxtBookResponse = booksImportTxtBookResponses[keyof booksImportTxtBookResponses];
+
+export type booksImportEpubBookData = {
+    body: Body_books_import_epub_book;
+    path?: never;
+    query?: never;
+    url: '/api/v1/books/import-epub';
+};
+
+export type booksImportEpubBookErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksImportEpubBookError = booksImportEpubBookErrors[keyof booksImportEpubBookErrors];
+
+export type booksImportEpubBookResponses = {
+    /**
+     * Successful Response
+     */
+    201: BookPublic;
+};
+
+export type booksImportEpubBookResponse = booksImportEpubBookResponses[keyof booksImportEpubBookResponses];
 
 export type booksDeleteBookData = {
     body?: never;

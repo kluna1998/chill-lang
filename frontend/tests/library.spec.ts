@@ -34,7 +34,7 @@ test("Library shows the empty state without demo navigation", async ({
     page.getByRole("heading", { name: "Todavía no tienes libros" }),
   ).toBeVisible()
   await expect(
-    page.getByText("Importa un archivo TXT para empezar tu biblioteca."),
+    page.getByText("Importa un archivo TXT o EPUB para empezar tu biblioteca."),
   ).toBeVisible()
   await expect(
     page.getByRole("link", { name: "Items", exact: true }),
@@ -141,9 +141,9 @@ test("Books can be imported, edited and deleted through the API", async ({
     return route.fulfill({ json: { message: "Book deleted successfully" } })
   })
   await page.goto("/")
-  await page.getByRole("button", { name: "Importar TXT" }).click()
+  await page.getByRole("button", { name: "Importar libro" }).click()
   let dialog = page.getByRole("dialog")
-  await dialog.getByLabel("Archivo TXT").setInputFiles({
+  await dialog.getByLabel("Archivo del libro").setInputFiles({
     name: "book.txt",
     mimeType: "text/plain",
     buffer: Buffer.from(
@@ -199,9 +199,9 @@ test("A failed import preserves the selected file for retry", async ({
     }),
   )
   await page.goto("/")
-  await page.getByRole("button", { name: "Importar TXT" }).click()
+  await page.getByRole("button", { name: "Importar libro" }).click()
   const dialog = page.getByRole("dialog")
-  await dialog.getByLabel("Archivo TXT").setInputFiles({
+  await dialog.getByLabel("Archivo del libro").setInputFiles({
     name: "invalid.txt",
     mimeType: "text/plain",
     buffer: Buffer.from("Invalid"),
@@ -265,4 +265,74 @@ test("Library errors can be retried", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Todavía no tienes libros" }),
   ).toBeVisible()
+})
+
+test("EPUB import uses the generated endpoint and opens the existing reader", async ({
+  page,
+}) => {
+  const id = "00000000-0000-4000-8000-000000000030"
+  const chapterId = "00000000-0000-4000-8000-000000000031"
+  const book = {
+    id,
+    owner_id: "owner",
+    title: "Un livre EPUB",
+    author: "Auteur",
+    created_at: new Date().toISOString(),
+  }
+  let imported = false
+  await page.route("**/api/v1/books/**", (route) => {
+    const request = route.request()
+    const path = new URL(request.url()).pathname
+    if (request.method() === "POST") {
+      expect(path).toBe("/api/v1/books/import-epub")
+      expect(request.headers()["content-type"]).toContain("multipart/form-data")
+      expect(request.headers().authorization).toBe("Bearer test-token")
+      expect(request.postData()).toContain('filename="livre.epub"')
+      imported = true
+      return route.fulfill({ status: 201, json: book })
+    }
+    if (path === "/api/v1/books/")
+      return route.fulfill({
+        json: { data: imported ? [book] : [], count: imported ? 1 : 0 },
+      })
+    if (path === `/api/v1/books/${id}`) return route.fulfill({ json: book })
+    if (path === `/api/v1/books/${id}/chapters`)
+      return route.fulfill({
+        json: {
+          data: [
+            { id: chapterId, book_id: id, title: "Le départ", position: 1 },
+          ],
+          count: 1,
+        },
+      })
+    return route.fulfill({
+      json: {
+        id: chapterId,
+        book_id: id,
+        title: "Le départ",
+        position: 1,
+        content: "Camille se réveille.\n\n— Bonjour !",
+      },
+    })
+  })
+  await page.goto("/")
+  await page.getByRole("button", { name: "Importar libro" }).click()
+  const dialog = page.getByRole("dialog")
+  await dialog
+    .getByLabel("Archivo del libro")
+    .setInputFiles({
+      name: "livre.epub",
+      mimeType: "application/epub+zip",
+      buffer: Buffer.from("EPUB request fixture"),
+    })
+  await expect(dialog.getByText("Formato: EPUB", { exact: true })).toBeVisible()
+  await dialog.getByRole("button", { name: "Importar", exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await page.getByRole("link", { name: "Abrir libro" }).click()
+  await page.getByRole("link", { name: "1. Le départ", exact: true }).click()
+  await expect(page.locator("article")).toContainText("Camille se réveille.")
+  await expect(page.locator("article > div")).toHaveCSS(
+    "white-space",
+    "pre-wrap",
+  )
 })

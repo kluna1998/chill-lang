@@ -56,7 +56,7 @@ function Library() {
           <div className="rounded-lg border p-8 text-center">
             <h2 className="text-lg font-semibold">Todavía no tienes libros</h2>
             <p className="mt-2 text-muted-foreground">
-              Importa un archivo TXT para empezar tu biblioteca.
+              Importa un archivo TXT o EPUB para empezar tu biblioteca.
             </p>
           </div>
         ) : (

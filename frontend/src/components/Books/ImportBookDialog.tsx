@@ -26,7 +26,9 @@ export function ImportBookDialog({ onImported }: { onImported: () => void }) {
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const mutation = useMutation({
     mutationFn: (selected: File) =>
-      BooksService.importTxtBook({ body: { file: selected } }),
+      selected.name.toLowerCase().endsWith(".epub")
+        ? BooksService.importEpubBook({ body: { file: selected } })
+        : BooksService.importTxtBook({ body: { file: selected } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["books"] })
       onImported()
@@ -49,42 +51,56 @@ export function ImportBookDialog({ onImported }: { onImported: () => void }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button>Importar TXT</Button>
+        <Button>Importar libro</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Importar TXT</DialogTitle>
+          <DialogTitle>Importar libro</DialogTitle>
           <DialogDescription>
-            Archivo UTF-8 de hasta 5 MiB. Incluye TITLE:, AUTHOR: opcional y
-            capítulos con === CHAPTER: Nombre ===.
+            EPUB sin DRM de hasta 20 MiB o TXT UTF-8 de hasta 5 MiB. Los TXT
+            deben incluir TITLE: y capítulos con === CHAPTER: Nombre ===.
           </DialogDescription>
         </DialogHeader>
         <form
           onSubmit={(event) => {
             event.preventDefault()
             if (!file) return
-            if (!file.name.toLowerCase().endsWith(".txt")) {
-              showErrorToast("Selecciona un archivo .txt.")
+            const extension = file.name.toLowerCase().split(".").pop()
+            if (extension !== "txt" && extension !== "epub") {
+              showErrorToast("Selecciona un archivo .txt o .epub.")
               return
             }
-            if (file.size > 5 * 1024 * 1024) {
-              showErrorToast("El archivo supera el límite de 5 MiB.")
+            const maxMiB = extension === "epub" ? 20 : 5
+            if (file.size > maxMiB * 1024 * 1024) {
+              showErrorToast(`El archivo supera el límite de ${maxMiB} MiB.`)
               return
             }
             mutation.mutate(file)
           }}
         >
           <div className="grid gap-3 py-4">
-            <Label htmlFor="book-txt">Archivo TXT</Label>
+            <Label htmlFor="book-file">Archivo del libro</Label>
             <Input
-              id="book-txt"
+              id="book-file"
               type="file"
-              accept=".txt,text/plain"
+              accept=".txt,.epub,text/plain,application/epub+zip"
               required
               disabled={mutation.isPending}
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
             />
-            {file && <p className="break-words text-sm">{file.name}</p>}
+            {file && (
+              <>
+                <p className="break-words text-sm">{file.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Formato:{" "}
+                  {file.name.toLowerCase().endsWith(".epub")
+                    ? "EPUB"
+                    : file.name.toLowerCase().endsWith(".txt")
+                      ? "TXT"
+                      : "No admitido"}
+                </p>
+              </>
+            )}
             {mutation.isPending && <p role="status">Importando libro…</p>}
           </div>
           <DialogFooter>

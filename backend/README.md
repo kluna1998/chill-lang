@@ -180,3 +180,38 @@ Elle rencontre Sophie.
 archivo inválido o ausente. El propietario procede de la sesión autenticada.
 El libro y todos sus capítulos se guardan en una única transacción; un fallo de
 persistencia ejecuta rollback. No se necesitan tablas ni migraciones adicionales.
+
+## Importación EPUB (fase 1)
+
+**Mi biblioteca → Importar libro** admite TXT y EPUB. La extensión selecciona el
+endpoint generado: `POST /api/v1/books/import-epub` recibe multipart `file` y
+responde `201` con `BookPublic`. El endpoint TXT y su límite de 5 MiB se conservan.
+
+El parser EPUB usa EbookLib 0.21 y lxml 6.1.3 (verificados en Python 3.14):
+
+- Extrae título, autores e idioma. El idioma solo forma parte del resultado del
+  parser; no se añade una columna al modelo.
+- Recorre el spine y utiliza el índice y los encabezados para separar secciones.
+  Una continuación sin encabezado se une solo si su título de documento coincide
+  con el capítulo anterior identificado por encabezado o índice. Si no hay señales
+  suficientes, conserva secciones del spine con su título de origen o nombre de
+  recurso; no intenta adivinar capítulos mediante el nombre del archivo.
+- Conserva texto plano, párrafos y diálogos; omite navegación, portadas explícitas,
+  scripts, estilos e imágenes. No conserva estilos, tablas complejas ni imágenes.
+- No extrae el ZIP al disco ni conserva el archivo original. Rechaza rutas
+  externas, recorridos `..`, entradas duplicadas y ZIP cifrados. El XML se valida
+  sin red ni carga de DTD y se vuelve a serializar sin DTD antes de usar EbookLib.
+  Las entidades de caracteres XHTML estándar se convierten de forma local;
+  las declaraciones de entidades personalizadas se rechazan.
+- Límite de subida: **20 MiB**; total descomprimido: **100 MiB**; recurso individual:
+  **10 MiB**; máximo **2000 entradas**, con relación de compresión máxima **200:1**.
+  Los límites de ZIP incluyen todos los recursos, aunque no se utilicen como texto.
+- No admite DRM, maquetación fija ni contenedores con múltiples versiones del libro.
+  Se permite la ofuscación estándar de fuentes, que no se utiliza para la lectura.
+  EPUB malformados se rechazan; no se garantiza reconstruir la división editorial
+  de capítulos de todos los libros.
+
+TXT y EPUB comparten `persist_imported_book`: libro y capítulos se insertan en una
+única transacción con rollback ante errores. El propietario siempre es el usuario
+autenticado. Ambos formatos utilizan el mismo detalle, índice y lector React.
+No se crean tablas ni migraciones.

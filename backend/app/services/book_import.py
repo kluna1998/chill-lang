@@ -17,6 +17,7 @@ class BookImportError(ValueError):
 class ParsedBook(BaseModel):
     book: BookCreate
     chapters: list[ChapterCreate]
+    language: str | None = None
 
 
 def parse_txt_book(data: bytes) -> ParsedBook:

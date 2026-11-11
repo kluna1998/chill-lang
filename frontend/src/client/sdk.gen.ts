@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { booksCreateBookData, booksCreateBookErrors, booksCreateBookResponses, booksCreateChapterData, booksCreateChapterErrors, booksCreateChapterResponses, booksDeleteBookData, booksDeleteBookErrors, booksDeleteBookResponses, booksDeleteChapterData, booksDeleteChapterErrors, booksDeleteChapterResponses, booksGetBookData, booksGetBookErrors, booksGetBookResponses, booksGetChapterData, booksGetChapterErrors, booksGetChapterResponses, booksImportTxtBookData, booksImportTxtBookErrors, booksImportTxtBookResponses, booksReadBooksData, booksReadBooksErrors, booksReadBooksResponses, booksReadChaptersData, booksReadChaptersErrors, booksReadChaptersResponses, booksUpdateBookData, booksUpdateBookErrors, booksUpdateBookResponses, booksUpdateChapterData, booksUpdateChapterErrors, booksUpdateChapterResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
+import type { booksCreateBookData, booksCreateBookErrors, booksCreateBookResponses, booksCreateChapterData, booksCreateChapterErrors, booksCreateChapterResponses, booksDeleteBookData, booksDeleteBookErrors, booksDeleteBookResponses, booksDeleteChapterData, booksDeleteChapterErrors, booksDeleteChapterResponses, booksGetBookData, booksGetBookErrors, booksGetBookResponses, booksGetChapterData, booksGetChapterErrors, booksGetChapterResponses, booksImportEpubBookData, booksImportEpubBookErrors, booksImportEpubBookResponses, booksImportTxtBookData, booksImportTxtBookErrors, booksImportTxtBookResponses, booksReadBooksData, booksReadBooksErrors, booksReadBooksResponses, booksReadChaptersData, booksReadChaptersErrors, booksReadChaptersResponses, booksUpdateBookData, booksUpdateBookErrors, booksUpdateBookResponses, booksUpdateChapterData, booksUpdateChapterErrors, booksUpdateChapterResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -402,6 +402,23 @@ export class BooksService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/books/import-txt',
+            ...options,
+            headers: {
+                'Content-Type': null,
+                ...options.headers
+            }
+        });
+    }
+
+    /**
+     * Import Epub Book
+     */
+    public static importEpubBook<ThrowOnError extends boolean = true>(options: Options<booksImportEpubBookData, ThrowOnError>) {
+        return (options.client ?? client).post<booksImportEpubBookResponses, booksImportEpubBookErrors, ThrowOnError>({
+            ...formDataBodySerializer,
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/books/import-epub',
             ...options,
             headers: {
                 'Content-Type': null,

@@ -20,6 +20,8 @@ from app.models import (
     Message,
 )
 from app.services.book_import import MAX_TXT_BYTES, BookImportError, parse_txt_book
+from app.services.book_persistence import persist_imported_book
+from app.services.epub_import import MAX_EPUB_BYTES, parse_epub_book
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -105,20 +107,27 @@ def import_txt_book(
         parsed = parse_txt_book(data)
     except BookImportError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    book = Book.model_validate(parsed.book, update={"owner_id": current_user.id})
-    book.chapters = [
-        Chapter.model_validate(chapter, update={"book_id": book.id})
-        for chapter in parsed.chapters
-    ]
+    return persist_imported_book(session, current_user.id, parsed)
+
+
+@router.post("/import-epub", response_model=BookPublic, status_code=201)
+def import_epub_book(
+    *, session: SessionDep, current_user: CurrentUser, file: UploadFile
+) -> BookPublic:
+    if not file.filename or not file.filename.lower().endswith(".epub"):
+        raise HTTPException(
+            status_code=422, detail="Selecciona un archivo con extensión .epub."
+        )
+    data = file.file.read(MAX_EPUB_BYTES + 1)
+    if len(data) > MAX_EPUB_BYTES:
+        raise HTTPException(
+            status_code=413, detail="El EPUB supera el límite de 20 MiB."
+        )
     try:
-        session.add(book)
-        session.flush()
-        result = BookPublic.model_validate(book)
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    return result
+        parsed = parse_epub_book(data)
+    except BookImportError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return persist_imported_book(session, current_user.id, parsed)
 
 
 @router.get("/{book_id}", response_model=BookPublic)
