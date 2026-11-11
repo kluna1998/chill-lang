@@ -5,7 +5,7 @@ import {
   useAnalyzeSelection,
   useExplainSelection,
 } from "@/hooks/useBookQueries"
-import { useSaveVocabulary } from "@/hooks/useReadingState"
+import { useSaveVocabulary, useUpdateVocabulary } from "@/hooks/useReadingState"
 import { extractErrorMessage } from "@/utils"
 import type { TextSelectionContext } from "./selection"
 
@@ -54,8 +54,8 @@ export function ReadingContextPanel({
       >
         {selection.context}
       </p>
-      <SelectionExplainer
-        key={`ai:${selection.bookId}:${selection.chapterId}:${selection.startOffset}:${selection.endOffset}`}
+      <SelectionActions
+        key={`${selection.bookId}:${selection.chapterId}:${selection.startOffset}:${selection.endOffset}:${selection.text}:${selection.context}`}
         selection={selection}
       />
       <SelectionAnalyzer
@@ -144,13 +144,69 @@ function SelectionAnalyzer({ selection }: { selection: TextSelectionContext }) {
   )
 }
 
-function SelectionExplainer({
-  selection,
-}: {
-  selection: TextSelectionContext
-}) {
+function SelectionActions({ selection }: { selection: TextSelectionContext }) {
   const result = useExplainSelection()
   const save = useSaveVocabulary()
+  const update = useUpdateVocabulary()
+  const saved = update.data ?? save.data
+  const translation =
+    result.data?.selected_text === selection.text
+      ? result.data.explanation.contextual_translation
+      : null
+  const canUpdate =
+    !!saved &&
+    translation !== null &&
+    translation !== saved.contextual_translation
+  return (
+    <>
+      <section className="mt-4 border-t pt-4" aria-label="Guardar vocabulario">
+        <LoadingButton
+          loading={save.isPending || update.isPending}
+          disabled={!!saved && !canUpdate}
+          onClick={() => {
+            if (saved && canUpdate) {
+              update.mutate({
+                id: saved.id,
+                contextual_translation: translation,
+              })
+            } else {
+              save.mutate({
+                chapter_id: selection.chapterId,
+                original_text: selection.text,
+                contextual_translation: translation,
+                context: selection.context,
+                start_offset: selection.startOffset,
+                end_offset: selection.endOffset,
+                context_start_offset: selection.contextStartOffset,
+                context_end_offset: selection.contextEndOffset,
+                offset_unit: "utf-16",
+              })
+            }
+          }}
+        >
+          {canUpdate
+            ? "Actualizar traducción"
+            : saved
+              ? "Palabra guardada"
+              : "Guardar palabra"}
+        </LoadingButton>
+        {save.isError && <p role="alert">{extractErrorMessage(save.error)}</p>}
+        {update.isError && (
+          <p role="alert">{extractErrorMessage(update.error)}</p>
+        )}
+      </section>
+      <SelectionExplainer selection={selection} result={result} />
+    </>
+  )
+}
+
+function SelectionExplainer({
+  selection,
+  result,
+}: {
+  selection: TextSelectionContext
+  result: ReturnType<typeof useExplainSelection>
+}) {
   const explanation = result.data?.explanation
   const matches = result.data?.selected_text === selection.text
   return (
@@ -206,28 +262,6 @@ function SelectionExplainer({
           <p className="text-xs text-muted-foreground">
             Explicación generada por IA; puede contener errores.
           </p>
-          <LoadingButton
-            loading={save.isPending}
-            disabled={save.isSuccess}
-            onClick={() =>
-              save.mutate({
-                chapter_id: selection.chapterId,
-                original_text: selection.text,
-                contextual_translation: explanation.contextual_translation,
-                context: selection.context,
-                start_offset: selection.startOffset,
-                end_offset: selection.endOffset,
-                context_start_offset: selection.contextStartOffset,
-                context_end_offset: selection.contextEndOffset,
-                offset_unit: "utf-16",
-              })
-            }
-          >
-            {save.isSuccess ? "Palabra guardada" : "Guardar palabra"}
-          </LoadingButton>
-          {save.isError && (
-            <p role="alert">{extractErrorMessage(save.error)}</p>
-          )}
         </div>
       )}
     </section>

@@ -3,6 +3,7 @@ import {
   type ReadingProgressPublic,
   ReadingService,
   type VocabularyCreate,
+  type VocabularyUpdate,
 } from "@/client"
 import useAuth from "./useAuth"
 
@@ -34,6 +35,18 @@ export function useDeleteVocabulary() {
   return useMutation({
     mutationFn: async (id: string) =>
       ReadingService.deleteVocabulary({ path: { entry_id: id } }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["vocabulary"] }),
+    retry: false,
+  })
+}
+
+export function useUpdateVocabulary() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...body }: VocabularyUpdate & { id: string }) =>
+      (await ReadingService.updateVocabulary({ path: { entry_id: id }, body }))
+        .data,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["vocabulary"] }),
     retry: false,

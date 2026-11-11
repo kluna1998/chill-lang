@@ -13,6 +13,7 @@ from app.models import (
     VocabularyEntry,
     VocabularyPublic,
     VocabularyPublicList,
+    VocabularyUpdate,
 )
 from app.services import reading_state
 
@@ -42,6 +43,16 @@ def delete_vocabulary(
 ) -> Message:
     reading_state.delete_vocabulary(session, current_user.id, entry_id)
     return Message(message="Vocabulary entry deleted")
+
+
+@router.patch("/vocabulary/{entry_id}", response_model=VocabularyPublic)
+def update_vocabulary(
+    session: SessionDep,
+    current_user: CurrentUser,
+    entry_id: uuid.UUID,
+    data: VocabularyUpdate,
+) -> VocabularyEntry:
+    return reading_state.update_vocabulary(session, current_user.id, entry_id, data)
 
 
 @router.get("/books/{book_id}/progress", response_model=ReadingProgressPublic | None)

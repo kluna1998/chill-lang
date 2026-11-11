@@ -122,8 +122,9 @@ test("Saving reuses the translation, appears in vocabulary and can be deleted", 
   await selectMaison(page)
   await expect(
     page.getByRole("button", { name: "Guardar palabra" }),
-  ).toHaveCount(0)
+  ).toBeEnabled()
   await page.getByRole("button", { name: "Explicar con IA" }).click()
+  await expect(page.getByTestId("contextual-translation")).toHaveText("casa")
   await page.getByRole("button", { name: "Guardar palabra" }).click()
   await expect(
     page.getByRole("button", { name: "Palabra guardada" }),
@@ -156,12 +157,13 @@ test("Vocabulary save errors can retry without another generation", async ({
     return route.fulfill(
       saves === 1
         ? { status: 503, json: { detail: "Temporalmente no disponible" } }
-        : { json: { id: "saved" } },
+        : { json: { id: "saved", contextual_translation: "casa" } },
     )
   })
   await page.goto(chapterPath)
   await selectMaison(page)
   await page.getByRole("button", { name: "Explicar con IA" }).click()
+  await expect(page.getByTestId("contextual-translation")).toHaveText("casa")
   await page.getByRole("button", { name: "Guardar palabra" }).click()
   await expect(page.getByRole("alert")).toHaveText(
     "Temporalmente no disponible",
@@ -172,6 +174,167 @@ test("Vocabulary save errors can retry without another generation", async ({
   ).toBeDisabled()
   expect(aiCalls).toBe(1)
   expect(saves).toBe(2)
+})
+
+for (const aiState of ["not requested", "pending", "disabled", "failed"]) {
+  test(`Saving without translation works when AI is ${aiState}`, async ({
+    page,
+  }) => {
+    let aiCalls = 0
+    let saves = 0
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route("**/chapters/*/explain", async (route) => {
+      aiCalls++
+      if (aiState === "pending") await gate
+      return route.fulfill({
+        status: aiState === "disabled" ? 503 : 502,
+        json: { detail: "IA no disponible" },
+      })
+    })
+    await page.route("**/api/v1/vocabulary/", (route) => {
+      saves++
+      const body = route.request().postDataJSON()
+      expect(body).toMatchObject({
+        original_text: "maison",
+        contextual_translation: null,
+        chapter_id: chapterId,
+        start_offset: 6,
+        end_offset: 12,
+        offset_unit: "utf-16",
+      })
+      expect(body.context).toContain("maison")
+      return route.fulfill({ json: { ...body, id: "saved" } })
+    })
+    await page.goto(chapterPath)
+    await selectMaison(page)
+    await expect(
+      page.getByRole("button", { name: "Guardar palabra" }),
+    ).toBeEnabled()
+    if (aiState !== "not requested") {
+      await page.getByRole("button", { name: "Explicar con IA" }).click()
+      if (aiState === "pending")
+        await expect(page.getByText("Preparando explicación…")).toBeVisible()
+      else await expect(page.getByRole("alert")).toHaveText("IA no disponible")
+    }
+    await page.getByRole("button", { name: "Guardar palabra" }).click()
+    await expect(
+      page.getByRole("button", { name: "Palabra guardada" }),
+    ).toBeDisabled()
+    expect(saves).toBe(1)
+    expect(aiCalls).toBe(aiState === "not requested" ? 0 : 1)
+    release()
+    if (aiState === "pending")
+      await expect(page.getByRole("alert")).toHaveText("IA no disponible")
+  })
+}
+
+test("A later AI translation updates the saved entry without a second POST or generation", async ({
+  page,
+}) => {
+  let aiCalls = 0
+  let saves = 0
+  let updates = 0
+  await page.route("**/chapters/*/explain", (route) => {
+    aiCalls++
+    return route.fulfill({ json: translation })
+  })
+  await page.route("**/api/v1/vocabulary/**", (route) => {
+    if (route.request().method() === "POST") {
+      saves++
+      expect(route.request().postDataJSON().contextual_translation).toBeNull()
+      return route.fulfill({
+        json: { ...route.request().postDataJSON(), id: "saved" },
+      })
+    }
+    updates++
+    expect(route.request().method()).toBe("PATCH")
+    expect(route.request().url()).toMatch(/\/vocabulary\/saved$/)
+    expect(route.request().postDataJSON()).toEqual({
+      contextual_translation: "casa",
+    })
+    return route.fulfill({
+      json: { id: "saved", contextual_translation: "casa" },
+    })
+  })
+  await page.goto(chapterPath)
+  await selectMaison(page)
+  await page.getByRole("button", { name: "Guardar palabra" }).click()
+  await expect(
+    page.getByRole("button", { name: "Palabra guardada" }),
+  ).toBeDisabled()
+  await page.getByRole("button", { name: "Explicar con IA" }).click()
+  await page
+    .getByRole("button", { name: "Actualizar traducción", exact: true })
+    .click()
+  await expect(
+    page.getByRole("button", { name: "Palabra guardada" }),
+  ).toBeDisabled()
+  expect(saves).toBe(1)
+  expect(updates).toBe(1)
+  expect(aiCalls).toBe(1)
+})
+
+test("Vocabulary allows manual translation editing, retries and clearing without AI", async ({
+  page,
+}) => {
+  let entry = {
+    id: "saved",
+    original_text: "maison",
+    contextual_translation: null as string | null,
+    context: "La maison est grande.",
+    created_at: "2026-01-01T00:00:00Z",
+  }
+  let updates = 0
+  let aiCalls = 0
+  await page.route("**/chapters/*/explain", (route) => {
+    aiCalls++
+    return route.abort()
+  })
+  await page.route("**/api/v1/vocabulary/**", (route) => {
+    if (route.request().method() === "PATCH") {
+      updates++
+      if (updates === 1)
+        return route.fulfill({
+          status: 503,
+          json: { detail: "No se ha podido actualizar" },
+        })
+      entry = { ...entry, ...route.request().postDataJSON() }
+      return route.fulfill({ json: entry })
+    }
+    return route.fulfill({ json: { data: [entry], count: 1 } })
+  })
+  await page.goto("/vocabulary")
+  await expect(page.getByText("Sin traducción", { exact: true })).toBeVisible()
+  await page
+    .getByRole("button", { name: "Editar traducción de maison" })
+    .click()
+  await page.getByLabel("Traducción de maison (opcional)").fill("casa")
+  await page
+    .getByRole("button", { name: "Guardar traducción", exact: true })
+    .click()
+  await expect(page.getByRole("alert")).toHaveText("No se ha podido actualizar")
+  await expect(page.getByLabel("Traducción de maison (opcional)")).toHaveValue(
+    "casa",
+  )
+  await page
+    .getByRole("button", { name: "Guardar traducción", exact: true })
+    .click()
+  await expect(page.getByText("maison — casa", { exact: true })).toBeVisible()
+  await page.reload()
+  await expect(page.getByText("maison — casa", { exact: true })).toBeVisible()
+  await page
+    .getByRole("button", { name: "Editar traducción de maison" })
+    .click()
+  await page.getByLabel("Traducción de maison (opcional)").fill("")
+  await page
+    .getByRole("button", { name: "Guardar traducción", exact: true })
+    .click()
+  await expect(page.getByText("Sin traducción", { exact: true })).toBeVisible()
+  expect(entry.contextual_translation).toBeNull()
+  expect(aiCalls).toBe(0)
 })
 
 test("Progress waits for recovery, restores after reload and debounces scrolling", async ({

@@ -130,6 +130,100 @@ def test_vocabulary_private_even_for_admin(client: TestClient, library):
     assert private.json() == missing.json()
 
 
+@pytest.mark.parametrize("omit_translation", [False, True])
+def test_vocabulary_without_translation_can_be_updated_without_duplicates(
+    client: TestClient, db: Session, library, omit_translation: bool
+) -> None:
+    _, chapter, _, owner, _ = library
+    payload = {**vocabulary(chapter), "contextual_translation": None}
+    if omit_translation:
+        payload.pop("contextual_translation")
+    response = client.post(f"{BASE}/vocabulary/", headers=owner, json=payload)
+    assert response.status_code == 200, response.text
+    entry = response.json()
+    assert entry["contextual_translation"] is None
+    assert entry["context"] == TEXT
+    assert entry["start_offset"] == 6 and entry["end_offset"] == 12
+    db.expire_all()
+    assert (
+        db.get(VocabularyEntry, uuid.UUID(entry["id"])).contextual_translation is None
+    )
+    # A repeated POST does not implicitly replace a saved snapshot.
+    duplicate = client.post(
+        f"{BASE}/vocabulary/", headers=owner, json=vocabulary(chapter)
+    )
+    assert duplicate.json() == entry
+    updated = client.patch(
+        f"{BASE}/vocabulary/{entry['id']}",
+        headers=owner,
+        json={
+            "contextual_translation": "casa",
+            "owner_id": str(uuid.uuid4()),
+            "original_text": "forged",
+        },
+    )
+    assert updated.status_code == 200
+    assert updated.json() == {**entry, "contextual_translation": "casa"}
+    assert client.get(f"{BASE}/vocabulary/", headers=owner).json() == {
+        "data": [updated.json()],
+        "count": 1,
+    }
+    assert (
+        client.post(f"{BASE}/vocabulary/", headers=owner, json=payload).json()
+        == updated.json()
+    )
+    cleared = client.patch(
+        f"{BASE}/vocabulary/{entry['id']}",
+        headers=owner,
+        json={"contextual_translation": None},
+    )
+    assert cleared.status_code == 200 and cleared.json() == entry
+
+
+def test_vocabulary_update_is_private_even_for_admin(client, library):
+    _, chapter, _, owner, other = library
+    entry = client.post(
+        f"{BASE}/vocabulary/", headers=owner, json=vocabulary(chapter)
+    ).json()
+    responses = [
+        client.patch(
+            f"{BASE}/vocabulary/{id_}",
+            headers=other,
+            json={"contextual_translation": "modified"},
+        )
+        for id_ in [entry["id"], uuid.uuid4()]
+    ]
+    assert all(response.status_code == 404 for response in responses)
+    assert responses[0].json() == responses[1].json()
+    assert client.get(f"{BASE}/vocabulary/", headers=owner).json()["data"] == [entry]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"contextual_translation": ""},
+        {"contextual_translation": " "},
+        {"contextual_translation": "x" * 501},
+        {"contextual_translation": 42},
+    ],
+)
+def test_vocabulary_update_validation_preserves_existing_entry(
+    client, library, payload
+):
+    _, chapter, _, owner, _ = library
+    entry = client.post(
+        f"{BASE}/vocabulary/", headers=owner, json=vocabulary(chapter)
+    ).json()
+    assert (
+        client.patch(
+            f"{BASE}/vocabulary/{entry['id']}", headers=owner, json=payload
+        ).status_code
+        == 422
+    )
+    assert client.get(f"{BASE}/vocabulary/", headers=owner).json()["data"] == [entry]
+
+
 @pytest.mark.parametrize(
     "changes",
     [
@@ -282,6 +376,7 @@ def test_deleted_chapter_cascades_reading_state(client, db, library):
         ("get", "/vocabulary/"),
         ("post", "/vocabulary/"),
         ("delete", f"/vocabulary/{uuid.uuid4()}"),
+        ("patch", f"/vocabulary/{uuid.uuid4()}"),
         ("get", f"/books/{uuid.uuid4()}/progress"),
         ("put", f"/books/{uuid.uuid4()}/progress"),
     ],

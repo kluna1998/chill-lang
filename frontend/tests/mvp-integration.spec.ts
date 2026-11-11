@@ -55,15 +55,32 @@ test("Real TXT import, NLP, vocabulary and progress with only AI generation simu
   await expect(page.getByTestId("selected-text")).toHaveText("maison")
   await page.getByRole("button", { name: "Analizar selección" }).click()
   await expect(page.getByText("Lema: maison", { exact: true })).toBeVisible()
-  await page.getByRole("button", { name: "Explicar con IA" }).click()
-  await expect(page.getByTestId("contextual-translation")).toHaveText("casa")
   const vocabularySave = page.waitForResponse(
     (response) =>
       response.url().endsWith("/vocabulary/") &&
       response.request().method() === "POST",
   )
   await page.getByRole("button", { name: "Guardar palabra" }).click()
-  expect((await vocabularySave).status()).toBe(200)
+  const saved = await vocabularySave
+  expect(saved.status()).toBe(200)
+  expect((await saved.json()).contextual_translation).toBeNull()
+  expect(aiCalls).toBe(0)
+  await expect(
+    page.getByRole("button", { name: "Palabra guardada" }),
+  ).toBeDisabled()
+  await page.getByRole("button", { name: "Explicar con IA" }).click()
+  await expect(page.getByTestId("contextual-translation")).toHaveText("casa")
+  const translationUpdate = page.waitForResponse(
+    (response) =>
+      response.url().includes("/vocabulary/") &&
+      response.request().method() === "PATCH",
+  )
+  await page
+    .getByRole("button", { name: "Actualizar traducción", exact: true })
+    .click()
+  const updated = await translationUpdate
+  expect(updated.status()).toBe(200)
+  expect((await updated.json()).contextual_translation).toBe("casa")
   await expect(
     page.getByRole("button", { name: "Palabra guardada" }),
   ).toBeDisabled()

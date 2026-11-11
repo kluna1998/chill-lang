@@ -1,7 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
+import type { VocabularyPublic } from "@/client"
 import { Button } from "@/components/ui/button"
-import { useDeleteVocabulary, useVocabulary } from "@/hooks/useReadingState"
+import { Input } from "@/components/ui/input"
+import {
+  useDeleteVocabulary,
+  useUpdateVocabulary,
+  useVocabulary,
+} from "@/hooks/useReadingState"
 import { extractErrorMessage } from "@/utils"
 
 export const Route = createFileRoute("/_layout/vocabulary")({
@@ -34,14 +40,20 @@ function VocabularyPage() {
             className="space-y-2 rounded border p-4 break-words"
           >
             <p className="font-semibold">
-              {entry.original_text} — {entry.contextual_translation}
+              {entry.original_text}
+              {entry.contextual_translation !== null &&
+                ` — ${entry.contextual_translation}`}
             </p>
+            {entry.contextual_translation === null && (
+              <p className="text-muted-foreground">Sin traducción</p>
+            )}
             <p className="whitespace-pre-wrap text-muted-foreground">
               {entry.context}
             </p>
             <p className="text-sm">
               Guardado el {new Date(entry.created_at).toLocaleDateString("es")}
             </p>
+            <TranslationEditor entry={entry} />
             <Button
               variant="outline"
               disabled={remove.isPending}
@@ -85,5 +97,66 @@ function VocabularyPage() {
         </nav>
       )}
     </div>
+  )
+}
+
+function TranslationEditor({ entry }: { entry: VocabularyPublic }) {
+  const [editing, setEditing] = useState(false)
+  const [translation, setTranslation] = useState(
+    entry.contextual_translation ?? "",
+  )
+  const update = useUpdateVocabulary()
+  if (!editing)
+    return (
+      <Button
+        variant="outline"
+        onClick={() => {
+          setTranslation(entry.contextual_translation ?? "")
+          update.reset()
+          setEditing(true)
+        }}
+      >
+        Editar traducción de {entry.original_text}
+      </Button>
+    )
+  return (
+    <form
+      className="space-y-2"
+      onSubmit={(event) => {
+        event.preventDefault()
+        update.mutate(
+          { id: entry.id, contextual_translation: translation.trim() || null },
+          { onSuccess: () => setEditing(false) },
+        )
+      }}
+    >
+      <label htmlFor={`translation-${entry.id}`} className="text-sm">
+        Traducción de {entry.original_text} (opcional)
+      </label>
+      <Input
+        id={`translation-${entry.id}`}
+        maxLength={500}
+        value={translation}
+        disabled={update.isPending}
+        onChange={(event) => setTranslation(event.target.value)}
+      />
+      <p className="text-sm text-muted-foreground">
+        Deja el campo vacío para guardar sin traducción.
+      </p>
+      <Button type="submit" disabled={update.isPending}>
+        Guardar traducción
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={update.isPending}
+        onClick={() => setEditing(false)}
+      >
+        Cancelar
+      </Button>
+      {update.isError && (
+        <p role="alert">{extractErrorMessage(update.error)}</p>
+      )}
+    </form>
   )
 }

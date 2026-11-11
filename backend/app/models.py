@@ -209,7 +209,9 @@ class VocabularyCreate(SQLModel):
     start_offset: int = Field(ge=0)
     end_offset: int = Field(ge=1)
     original_text: str = Field(min_length=1, max_length=512)
-    contextual_translation: str = Field(min_length=1, max_length=500)
+    contextual_translation: str | None = Field(
+        default=None, min_length=1, max_length=500
+    )
     context: str = Field(min_length=1, max_length=2000)
     context_start_offset: int = Field(ge=0)
     context_end_offset: int = Field(ge=1)
@@ -217,10 +219,19 @@ class VocabularyCreate(SQLModel):
 
     @field_validator("original_text", "contextual_translation")
     @classmethod
-    def nonblank(cls, value: str) -> str:
-        if not value.strip():
+    def nonblank(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
             raise ValueError("Text cannot be blank")
         return value
+
+
+class VocabularyUpdate(SQLModel):
+    contextual_translation: str | None = Field(min_length=1, max_length=500)
+
+    @field_validator("contextual_translation")
+    @classmethod
+    def nonblank(cls, value: str | None) -> str | None:
+        return VocabularyCreate.nonblank(value)
 
 
 class VocabularyEntry(SQLModel, table=True):
@@ -232,7 +243,7 @@ class VocabularyEntry(SQLModel, table=True):
     book_id: uuid.UUID = Field(foreign_key="book.id", ondelete="CASCADE")
     chapter_id: uuid.UUID = Field(foreign_key="chapter.id", ondelete="CASCADE")
     original_text: str = Field(max_length=512)
-    contextual_translation: str = Field(max_length=500)
+    contextual_translation: str | None = Field(default=None, max_length=500)
     context: str = Field(sa_type=Text)
     start_offset: int
     end_offset: int
@@ -249,7 +260,7 @@ class VocabularyPublic(SQLModel):
     book_id: uuid.UUID
     chapter_id: uuid.UUID
     original_text: str
-    contextual_translation: str
+    contextual_translation: str | None
     context: str
     start_offset: int
     end_offset: int

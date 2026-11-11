@@ -17,6 +17,7 @@ from app.models import (
     VocabularyEntry,
     VocabularyPublic,
     VocabularyPublicList,
+    VocabularyUpdate,
     get_datetime_utc,
 )
 from app.services.book_persistence import get_owned_book, get_owned_chapter
@@ -109,9 +110,9 @@ def list_vocabulary(
     )
 
 
-def delete_vocabulary(
+def _get_vocabulary(
     session: Session, owner_id: uuid.UUID, entry_id: uuid.UUID
-) -> None:
+) -> VocabularyEntry:
     entry = session.exec(
         select(VocabularyEntry).where(
             VocabularyEntry.id == entry_id, VocabularyEntry.owner_id == owner_id
@@ -119,6 +120,24 @@ def delete_vocabulary(
     ).first()
     if entry is None:
         raise HTTPException(404, "Vocabulary entry not found")
+    return entry
+
+
+def update_vocabulary(
+    session: Session, owner_id: uuid.UUID, entry_id: uuid.UUID, data: VocabularyUpdate
+) -> VocabularyEntry:
+    entry = _get_vocabulary(session, owner_id, entry_id)
+    entry.contextual_translation = data.contextual_translation
+    session.add(entry)
+    session.commit()
+    session.refresh(entry)
+    return entry
+
+
+def delete_vocabulary(
+    session: Session, owner_id: uuid.UUID, entry_id: uuid.UUID
+) -> None:
+    entry = _get_vocabulary(session, owner_id, entry_id)
     session.delete(entry)
     session.commit()
 

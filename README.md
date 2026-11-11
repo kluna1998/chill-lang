@@ -12,8 +12,8 @@ Cada usuario tiene una biblioteca privada, vocabulario personal y progreso de le
 - Análisis de lemas, categorías y morfología con spaCy y `fr_core_news_sm`.
 - Traducción contextual con OpenAI, solicitada expresamente por el lector.
   Las explicaciones son opcionales y se muestran cuando aportan valor pedagógico.
-- Guardado de vocabulario reutilizando la traducción ya obtenida, sin otra llamada
-  a la IA; listado paginado y eliminación de entradas propias.
+- Guardado de vocabulario con o sin traducción, independiente de OpenAI. Reutiliza
+  una traducción disponible y permite editarla después; listado paginado y eliminación.
 - Progreso por usuario y libro, recuperación de posición y «Continuar leyendo».
   Utiliza offsets del texto, debounce, huella del contenido y control de versiones.
 
@@ -129,8 +129,10 @@ expandido, rutas y entidades XML. Se extraen capítulos siguiendo el spine; las
 portadas y la navegación no se convierten en capítulos de lectura. Un error de
 persistencia revierte el libro y todos sus capítulos.
 
-En el lector, selecciona texto para analizarlo o solicitar su traducción. Después
-de obtenerla puedes pulsar «Guardar palabra». El contexto se verifica contra el
+En el lector, selecciona texto y pulsa «Guardar palabra» sin necesidad de utilizar
+la IA. Si ya hay una traducción, se reutiliza; de lo contrario se guarda `null`.
+Una traducción obtenida después puede añadirse con «Actualizar traducción».
+En «Mi vocabulario» puedes editarla manualmente o dejarla vacía. El contexto se verifica contra el
 capítulo persistido y los dobles clics no crean entradas duplicadas para el mismo
 rango. Eliminar un libro, capítulo o cuenta elimina por cascada sus datos asociados.
 

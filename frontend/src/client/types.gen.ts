@@ -826,7 +826,7 @@ export type VocabularyCreate = {
     /**
      * Contextual Translation
      */
-    contextual_translation: string;
+    contextual_translation?: string | null;
     /**
      * Context
      */
@@ -872,7 +872,7 @@ export type VocabularyPublic = {
     /**
      * Contextual Translation
      */
-    contextual_translation: string;
+    contextual_translation: string | null;
     /**
      * Context
      */
@@ -915,6 +915,16 @@ export type VocabularyPublicList = {
      * Count
      */
     count: number;
+};
+
+/**
+ * VocabularyUpdate
+ */
+export type VocabularyUpdate = {
+    /**
+     * Contextual Translation
+     */
+    contextual_translation: string | null;
 };
 
 export type loginLoginAccessTokenData = {
@@ -2022,6 +2032,36 @@ export type readingDeleteVocabularyResponses = {
 };
 
 export type readingDeleteVocabularyResponse = readingDeleteVocabularyResponses[keyof readingDeleteVocabularyResponses];
+
+export type readingUpdateVocabularyData = {
+    body: VocabularyUpdate;
+    path: {
+        /**
+         * Entry Id
+         */
+        entry_id: string;
+    };
+    query?: never;
+    url: '/api/v1/vocabulary/{entry_id}';
+};
+
+export type readingUpdateVocabularyErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type readingUpdateVocabularyError = readingUpdateVocabularyErrors[keyof readingUpdateVocabularyErrors];
+
+export type readingUpdateVocabularyResponses = {
+    /**
+     * Successful Response
+     */
+    200: VocabularyPublic;
+};
+
+export type readingUpdateVocabularyResponse = readingUpdateVocabularyResponses[keyof readingUpdateVocabularyResponses];
 
 export type readingGetProgressData = {
     body?: never;

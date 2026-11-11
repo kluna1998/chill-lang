@@ -447,13 +447,17 @@ se sustituyen por mensajes locales sin credenciales ni cuerpos internos.
 cliente OpenAPI generado, con cachés de React Query separadas por usuario.
 Cerrar sesión vacía la caché para proteger los datos al cambiar de cuenta.
 
-- `POST /api/v1/vocabulary/`: recibe la traducción ya visible de la Fase 4 y el
-  rango seleccionado. El servidor comprueba propietario, texto, contexto y límites UTF-16,
+- `POST /api/v1/vocabulary/`: recibe el rango seleccionado y, si existe, la
+  traducción visible de la Fase 4. `contextual_translation` puede ser `null` o
+  omitirse; el guardado es independiente de la disponibilidad de OpenAI. El servidor comprueba propietario, texto, contexto y límites UTF-16,
   y obtiene el contexto directamente del capítulo persistido. No llama a OpenAI
   ni vuelve a analizar el texto con spaCy.
 - `GET /api/v1/vocabulary/?skip=0&limit=20`: lista únicamente las entradas del
   usuario, con un máximo de 100 por petición. `DELETE /api/v1/vocabulary/{id}`
   elimina una entrada propia; recursos privados e inexistentes devuelven 404.
+- `PATCH /api/v1/vocabulary/{id}`: actualiza únicamente `contextual_translation`
+  de una entrada propia. Acepta texto no vacío de hasta 500 caracteres o `null`;
+  no modifica contexto, offsets, propietario ni fecha de guardado y no llama al LLM.
 - La restricción única `(owner_id, chapter_id, start_offset, end_offset)` hace
   idempotentes los reintentos y los dobles clics concurrentes. Devuelven la
   instantánea existente sin cambiar su traducción ni su fecha de guardado.
@@ -526,3 +530,7 @@ selecciona cada expresión y pulsa **Explicar con IA**:
 Evalúa brevedad, corrección en español, uso de la oración y honestidad ante
 ambigüedad. La calidad pedagógica de gpt-5.4-mini en estos ejemplos queda pendiente
 de esa evaluación real. No se promete exactitud perfecta.
+
+La migración `62e63caea003` permite traducciones nulas conservando las entradas
+existentes. Su downgrade exige resolver primero los valores `null`: PostgreSQL
+rechaza volver a `NOT NULL` mientras existan, sin inventar traducciones ni borrar filas.
