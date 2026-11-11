@@ -121,3 +121,46 @@ docker compose down -v
 To update the tests, navigate to the tests directory and modify the existing test files or add new ones as needed.
 
 For more information on writing and running Playwright tests, refer to the official [Playwright documentation](https://playwright.dev/docs/intro).
+
+## Lector interactivo (fase 2)
+
+El contenido se conserva como **un único nodo de texto**, con `white-space:
+pre-wrap`. Las líneas en blanco originales separan los párrafos sin insertar
+caracteres ni reconstruir el contenido. Esto funciona igual para TXT y EPUB y
+mantiene fiable la correspondencia entre selección y texto almacenado.
+
+- `Reader/selection.ts` define `TextSelectionContext` y extrae la selección con
+  rangos DOM. Comprueba que ambos extremos están dentro del contenido, que
+  `textContent` coincide con el original y que el rango es exactamente el segmento
+  indicado por sus offsets. No busca la primera aparición de una palabra.
+- Los offsets `[startOffset, endOffset)` son **unidades UTF-16 de JavaScript**,
+  identificadas mediante `offsetUnit`. No equivalen necesariamente a los índices
+  de cadenas de Python: los caracteres como emoji ocupan dos unidades. La futura
+  integración NLP deberá convertirlos explícitamente o utilizar el texto y el
+  contexto incluidos, sin asumir otra unidad.
+- El contexto es un fragmento literal, con hasta 160 unidades a cada lado de la
+  selección, acotado por separaciones de párrafo cuando existen. Los extremos del
+  contexto no cortan pares sustitutos. No hay segmentación lingüística de frases.
+- `SelectableText` escucha la selección nativa (`selectionchange`) y espera 180 ms
+  para capturarla también al ajustar los tiradores táctiles o utilizar el teclado.
+  Las selecciones vacías, externas, múltiples o inconsistentes se ignoran. La
+  captura soporta rangos entre nodos de texto si su concatenación sigue siendo
+  exactamente el contenido original.
+- `ReadingContextPanel` presenta selección y contexto como texto, sin análisis
+  simulado. No mueve el foco ni bloquea la lectura. Se cierra con su botón o Escape.
+  En pantallas grandes aparece al lado; en móvil es un panel inferior de altura
+  limitada y el lector reserva espacio de desplazamiento para seguir leyendo.
+  No se ha validado aún en dispositivos físicos iOS/Android.
+- `ChapterReader` conserva los hooks y la navegación. El componente interactivo
+  se identifica por libro y capítulo: al navegar se descarta la selección, incluso
+  si el capítulo siguiente ya está en caché. Cerrar el panel limpia la selección
+  nativa para evitar que reaparezca.
+- `ReadingPreferences` ofrece tamaño, interlineado y familia serif/sans-serif con
+  los componentes UI existentes. Las preferencias viven en React, continúan al
+  navegar dentro del lector y se reinician al recargar o abandonar el componente.
+  No se escriben en localStorage ni se envían al backend.
+
+Las pruebas de `tests/reader.spec.ts` usan Playwright y el DOM real de Chromium:
+selección entre párrafos y elementos, offsets de palabras repetidas, acentos y
+emoji, entradas inválidas, navegación, cierre y preferencias. Las respuestas API
+se simulan en esas pruebas de navegador. No hay endpoints ni dependencias nuevos.
