@@ -5,6 +5,16 @@ export type ClientOptions = {
 };
 
 /**
+ * Body_books-import_txt_book
+ */
+export type Body_books_import_txt_book = {
+    /**
+     * File
+     */
+    file: Blob | File;
+};
+
+/**
  * Body_login-login_access_token
  */
 export type Body_login_login_access_token = {
@@ -1145,6 +1155,31 @@ export type booksCreateBookResponses = {
 };
 
 export type booksCreateBookResponse = booksCreateBookResponses[keyof booksCreateBookResponses];
+
+export type booksImportTxtBookData = {
+    body: Body_books_import_txt_book;
+    path?: never;
+    query?: never;
+    url: '/api/v1/books/import-txt';
+};
+
+export type booksImportTxtBookErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksImportTxtBookError = booksImportTxtBookErrors[keyof booksImportTxtBookErrors];
+
+export type booksImportTxtBookResponses = {
+    /**
+     * Successful Response
+     */
+    201: BookPublic;
+};
+
+export type booksImportTxtBookResponse = booksImportTxtBookResponses[keyof booksImportTxtBookResponses];
 
 export type booksDeleteBookData = {
     body?: never;

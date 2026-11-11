@@ -5,6 +5,7 @@ import { useState } from "react"
 import { BooksService } from "@/client"
 import { BookForm } from "@/components/Books/BookForm"
 import { DeleteBook } from "@/components/Books/DeleteBook"
+import { ImportBookDialog } from "@/components/Books/ImportBookDialog"
 import { Button } from "@/components/ui/button"
 import useAuth from "@/hooks/useAuth"
 
@@ -33,7 +34,7 @@ function Library() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-tight">Mi biblioteca</h1>
-        <BookForm />
+        <ImportBookDialog onImported={() => setPage(0)} />
       </div>
       {isPending ? (
         <p role="status">Cargando libros…</p>
@@ -55,7 +56,7 @@ function Library() {
           <div className="rounded-lg border p-8 text-center">
             <h2 className="text-lg font-semibold">Todavía no tienes libros</h2>
             <p className="mt-2 text-muted-foreground">
-              Añade un libro con su título y autor para empezar tu biblioteca.
+              Importa un archivo TXT para empezar tu biblioteca.
             </p>
           </div>
         ) : (

@@ -143,3 +143,40 @@ Once you are done, regenerate the templates used by the application:
 ```console
 $ bun run email:export
 ```
+
+## Importación TXT de Chill-Lang
+
+Desde **Mi biblioteca → Importar TXT**, selecciona un archivo `.txt` UTF-8
+(máximo **5 MiB = 5 242 880 bytes**). También se admite UTF-8 con BOM.
+El archivo se procesa en memoria y no se almacena como documento.
+
+```text
+TITLE: Une aventure à Paris
+AUTHOR: Chill-Lang
+
+=== CHAPTER: Le départ ===
+
+Camille se réveille très tôt.
+Elle regarde par la fenêtre.
+
+=== CHAPTER: La rencontre ===
+
+Camille arrive à la gare.
+Elle rencontre Sophie.
+```
+
+- `TITLE:` es obligatorio y `AUTHOR:` opcional; no se permiten cabeceras repetidas
+  ni texto libre antes del primer capítulo.
+- Los títulos del libro y los capítulos y el autor tienen un máximo de 255 caracteres.
+- Cada capítulo empieza con `=== CHAPTER: Nombre ===`, en una línea propia,
+  y debe contener texto. Debe existir al menos un capítulo.
+- El orden determina `position` desde 1. No se deducen capítulos automáticamente.
+- Se conservan párrafos, espacios y líneas en blanco del contenido, incluso junto
+  a las cabeceras. CRLF y CR se normalizan a LF.
+- Se rechazan archivos vacíos, cabeceras malformadas, UTF-8 inválido y caracteres nulos.
+
+`POST /api/v1/books/import-txt` requiere un token y un archivo multipart en el campo
+`file`. Devuelve `201` con `BookPublic`; `413` si supera el límite; `422` para un
+archivo inválido o ausente. El propietario procede de la sesión autenticada.
+El libro y todos sus capítulos se guardan en una única transacción; un fallo de
+persistencia ejecuta rollback. No se necesitan tablas ni migraciones adicionales.

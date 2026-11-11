@@ -39,32 +39,28 @@ const formSchema = z.object({
 })
 type FormData = z.infer<typeof formSchema>
 
-export function BookForm({ book }: { book?: BookPublic }) {
+export function BookForm({ book }: { book: BookPublic }) {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
-    defaultValues: { title: book?.title ?? "", author: book?.author ?? "" },
+    defaultValues: { title: book.title ?? "", author: book.author ?? "" },
   })
   const mutation = useMutation({
     mutationFn: async (values: FormData) => {
       const body = { title: values.title, author: values.author || null }
-      if (book) {
-        await BooksService.updateBook({ path: { book_id: book.id }, body })
-      } else {
-        await BooksService.createBook({ body })
-      }
+      await BooksService.updateBook({ path: { book_id: book.id }, body })
     },
     onSuccess: () => {
-      showSuccessToast(book ? "Libro actualizado" : "Libro añadido")
+      showSuccessToast("Libro actualizado")
       setOpen(false)
       queryClient.invalidateQueries({ queryKey: ["books"] })
     },
     onError: handleError.bind(showErrorToast),
   })
-  const label = book ? "Editar libro" : "Añadir libro"
+  const label = "Editar libro"
 
   return (
     <Dialog
@@ -72,12 +68,12 @@ export function BookForm({ book }: { book?: BookPublic }) {
       onOpenChange={(nextOpen) => {
         if (mutation.isPending) return
         if (nextOpen)
-          form.reset({ title: book?.title ?? "", author: book?.author ?? "" })
+          form.reset({ title: book.title ?? "", author: book.author ?? "" })
         setOpen(nextOpen)
       }}
     >
       <DialogTrigger asChild>
-        <Button variant={book ? "outline" : "default"}>{label}</Button>
+        <Button variant="outline">{label}</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>

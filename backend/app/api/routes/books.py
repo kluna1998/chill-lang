@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile
 from sqlmodel import Session, col, func, select
 
 from app.api.deps import CurrentUser, SessionDep
@@ -19,6 +19,7 @@ from app.models import (
     ChapterUpdate,
     Message,
 )
+from app.services.book_import import MAX_TXT_BYTES, BookImportError, parse_txt_book
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -85,6 +86,39 @@ def read_books(
         data=[BookPublic.model_validate(book) for book in books],
         count=count,
     )
+
+
+@router.post("/import-txt", response_model=BookPublic, status_code=201)
+def import_txt_book(
+    *, session: SessionDep, current_user: CurrentUser, file: UploadFile
+) -> BookPublic:
+    if not file.filename or not file.filename.lower().endswith(".txt"):
+        raise HTTPException(
+            status_code=422, detail="Selecciona un archivo con extensión .txt."
+        )
+    data = file.file.read(MAX_TXT_BYTES + 1)
+    if len(data) > MAX_TXT_BYTES:
+        raise HTTPException(
+            status_code=413, detail="El archivo supera el límite de 5 MiB."
+        )
+    try:
+        parsed = parse_txt_book(data)
+    except BookImportError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    book = Book.model_validate(parsed.book, update={"owner_id": current_user.id})
+    book.chapters = [
+        Chapter.model_validate(chapter, update={"book_id": book.id})
+        for chapter in parsed.chapters
+    ]
+    try:
+        session.add(book)
+        session.flush()
+        result = BookPublic.model_validate(book)
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    return result
 
 
 @router.get("/{book_id}", response_model=BookPublic)

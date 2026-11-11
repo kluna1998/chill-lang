@@ -34,9 +34,7 @@ test("Library shows the empty state without demo navigation", async ({
     page.getByRole("heading", { name: "Todavía no tienes libros" }),
   ).toBeVisible()
   await expect(
-    page.getByText(
-      "Añade un libro con su título y autor para empezar tu biblioteca.",
-    ),
+    page.getByText("Importa un archivo TXT para empezar tu biblioteca."),
   ).toBeVisible()
   await expect(
     page.getByRole("link", { name: "Items", exact: true }),
@@ -62,7 +60,7 @@ test("Account remains accessible from the user menu", async ({ page }) => {
   await expect(page.getByRole("tab", { name: "My profile" })).toBeVisible()
 })
 
-test("Books can be created, edited and deleted through the API", async ({
+test("Books can be imported, edited and deleted through the API", async ({
   page,
 }) => {
   const ownerId = "00000000-0000-4000-8000-000000000001"
@@ -78,6 +76,36 @@ test("Books can be created, edited and deleted through the API", async ({
     const request = route.request()
     expect(request.headers().authorization).toBe("Bearer test-token")
     const url = new URL(request.url())
+    if (
+      request.method() === "GET" &&
+      url.pathname === `/api/v1/books/${bookId}`
+    )
+      return route.fulfill({ json: book })
+    if (
+      request.method() === "GET" &&
+      url.pathname === `/api/v1/books/${bookId}/chapters`
+    )
+      return route.fulfill({
+        json: {
+          data: [
+            { id: "chapter-1", book_id: bookId, title: "Un", position: 1 },
+          ],
+          count: 1,
+        },
+      })
+    if (
+      request.method() === "GET" &&
+      url.pathname === `/api/v1/books/${bookId}/chapters/chapter-1`
+    )
+      return route.fulfill({
+        json: {
+          id: "chapter-1",
+          book_id: bookId,
+          title: "Un",
+          position: 1,
+          content: "Bonjour !",
+        },
+      })
     if (request.method() === "GET") {
       expect(url.searchParams.get("skip")).toBe("0")
       expect(url.searchParams.get("limit")).toBe("20")
@@ -86,13 +114,13 @@ test("Books can be created, edited and deleted through the API", async ({
       })
     }
     if (request.method() === "POST") {
-      expect(url.pathname).toBe("/api/v1/books/")
-      expect(request.postDataJSON()).toEqual({
+      expect(url.pathname).toBe("/api/v1/books/import-txt")
+      expect(request.headers()["content-type"]).toContain("multipart/form-data")
+      expect(request.postData()).toContain('filename="book.txt"')
+      expect(request.postData()).toContain("TITLE: Le Petit Prince")
+      book = {
         title: "Le Petit Prince",
         author: "Antoine de Saint-Exupéry",
-      })
-      book = {
-        ...request.postDataJSON(),
         id: bookId,
         owner_id: ownerId,
         created_at: new Date().toISOString(),
@@ -113,14 +141,24 @@ test("Books can be created, edited and deleted through the API", async ({
     return route.fulfill({ json: { message: "Book deleted successfully" } })
   })
   await page.goto("/")
-  await page.getByRole("button", { name: "Añadir libro" }).click()
+  await page.getByRole("button", { name: "Importar TXT" }).click()
   let dialog = page.getByRole("dialog")
-  await dialog.getByLabel("Título", { exact: true }).fill("Le Petit Prince")
-  await dialog.getByLabel("Autor (opcional)").fill("Antoine de Saint-Exupéry")
-  await dialog.getByRole("button", { name: "Guardar" }).click()
+  await dialog.getByLabel("Archivo TXT").setInputFiles({
+    name: "book.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from(
+      "TITLE: Le Petit Prince\nAUTHOR: Antoine de Saint-Exupéry\n=== CHAPTER: Un ===\nBonjour !",
+    ),
+  })
+  await dialog.getByRole("button", { name: "Importar", exact: true }).click()
   await expect(
     page.getByRole("heading", { name: "Le Petit Prince" }),
   ).toBeVisible()
+  await page.getByRole("link", { name: "Abrir libro" }).click()
+  await page.getByRole("link", { name: "1. Un", exact: true }).click()
+  await expect(page.locator("article")).toContainText("Bonjour !")
+  await page.getByRole("link", { name: "Volver al libro" }).click()
+  await page.getByRole("link", { name: "Volver a mi biblioteca" }).click()
   await page.getByRole("button", { name: "Editar libro" }).click()
   dialog = page.getByRole("dialog")
   await expect(dialog.getByLabel("Título", { exact: true })).toHaveValue(
@@ -151,23 +189,29 @@ test("Books can be created, edited and deleted through the API", async ({
   ).toBeVisible()
 })
 
-test("A failed creation keeps the form open and preserves the input", async ({
+test("A failed import preserves the selected file for retry", async ({
   page,
 }) => {
-  await page.route("**/api/v1/books/", (route) =>
-    route.fulfill({ status: 422, json: { detail: "Título no válido" } }),
+  await page.route("**/api/v1/books/import-txt", (route) =>
+    route.fulfill({
+      status: 422,
+      json: { detail: "Falta TITLE: con el título del libro." },
+    }),
   )
   await page.goto("/")
-  await page.getByRole("button", { name: "Añadir libro" }).click()
+  await page.getByRole("button", { name: "Importar TXT" }).click()
   const dialog = page.getByRole("dialog")
-  await dialog.getByLabel("Título", { exact: true }).fill("Livre")
-  await dialog.getByRole("button", { name: "Guardar" }).click()
+  await dialog.getByLabel("Archivo TXT").setInputFiles({
+    name: "invalid.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("Invalid"),
+  })
+  await dialog.getByRole("button", { name: "Importar", exact: true }).click()
   await expect(
-    page.getByText("Título no válido", { exact: true }),
+    page.getByText("Falta TITLE: con el título del libro.", { exact: true }),
   ).toBeVisible()
-  await expect(dialog.getByLabel("Título", { exact: true })).toHaveValue(
-    "Livre",
-  )
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText("invalid.txt", { exact: true })).toBeVisible()
 })
 
 test("Library pagination requests the next page", async ({ page }) => {
