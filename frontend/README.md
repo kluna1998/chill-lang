@@ -164,3 +164,20 @@ Las pruebas de `tests/reader.spec.ts` usan Playwright y el DOM real de Chromium:
 selección entre párrafos y elementos, offsets de palabras repetidas, acentos y
 emoji, entradas inválidas, navegación, cierre y preferencias. Las respuestas API
 se simulan en esas pruebas de navegador. No hay endpoints ni dependencias nuevos.
+
+## Análisis lingüístico (fase 3)
+
+El panel contextual añade **Analizar selección**. `useAnalyzeSelection` utiliza el
+cliente OpenAPI existente y envía únicamente offsets UTF-16 y los identificadores
+como parámetros de la ruta. El backend analiza el contenido persistido del capítulo.
+
+El panel muestra contexto, tokens, lema, POS, morfología y dependencia tal como los
+produce el modelo; distingue anotaciones ausentes de rasgos vacíos. No ofrece
+traducción ni corrige predicciones. Las limitaciones conocidas del modelo francés
+se documentan en `backend/README.md`.
+
+El análisis vive en una mutación local de TanStack Query, sin persistencia. El
+subcomponente está identificado por libro, capítulo y rango: una respuesta tardía
+no reemplaza el resultado de otra selección, y cerrar/navegar descarta el análisis.
+Se conservan el contexto original y los controles de lectura. Si la respuesta
+contiene un texto diferente del seleccionado, se pide reabrir el capítulo.

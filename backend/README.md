@@ -215,3 +215,124 @@ TXT y EPUB comparten `persist_imported_book`: libro y capítulos se insertan en 
 única transacción con rollback ante errores. El propietario siempre es el usuario
 autenticado. Ambos formatos utilizan el mismo detalle, índice y lector React.
 No se crean tablas ni migraciones.
+
+## Motor lingüístico francés (fase 3)
+
+`POST /api/v1/books/{book_id}/chapters/{chapter_id}/analyze` requiere autenticación.
+El endpoint reutiliza la comprobación de propietario y pertenencia del capítulo;
+los recursos ajenos o inexistentes devuelven 404. El cuerpo es:
+
+```json
+{"start_offset": 8, "end_offset": 15, "offset_unit": "utf-16"}
+```
+
+Los índices son **globales al contenido persistido del capítulo**, con intervalo
+semiabierto `[inicio, fin)`. Para `😀 Elle aperçut un homme.` seleccionan `aperçut`.
+No se envía texto para analizar: el backend obtiene el original de PostgreSQL.
+
+El servicio convierte las unidades UTF-16 de JavaScript a índices de puntos de
+código de Python; rechaza posiciones fuera del capítulo, intervalos vacíos,
+selecciones de solo espacios y extremos que parten un par sustituto. La selección
+se limita a 512 unidades UTF-16. spaCy recibe una ventana de como máximo 4096
+caracteres Python, no el capítulo completo. La búsqueda de la posición recorre
+el prefijo original una vez; las conversiones inversas se calculan dentro de la
+ventana acotada.
+
+La respuesta conserva la selección exacta y añade tokens que la solapan. Una
+selección parcial no se amplía silenciosamente: `selection_covers_full_tokens`
+indica si incluye completos los tokens devueltos. Sus posiciones y las de sus
+núcleos sintácticos vuelven a ser offsets UTF-16 globales del capítulo.
+Se devuelven las oraciones que se solapan con la selección y su contexto literal.
+`context_truncated`/`is_truncated` señalan oraciones que podrían estar incompletas
+al tocar un borde de la ventana. Si no hay límites oracionales disponibles, se
+utiliza el fragmento original de la ventana sin inventar una oración.
+
+`None` indica una anotación ausente; un diccionario morfológico vacío indica que
+el pipeline no asignó rasgos a ese token. No se fabrica una dependencia o un lema.
+Los errores de selección producen 422 y un modelo no disponible produce 503.
+
+### Componentes y despliegue
+
+- `services/french_nlp.py`: carga protegida por lock, reutilizada una vez por
+  proceso, conversión Unicode, contexto y análisis. No utiliza SQL ni FastAPI.
+- `models.py`: contratos `SelectionAnalysisRequest`, `AnalyzedToken`,
+  `AnalyzedSentence` y `SelectionAnalysis`, sin nuevas tablas.
+- `api/routes/books.py`: autorización, lectura del capítulo y adaptación HTTP.
+- El cliente OpenAPI generado y `useAnalyzeSelection` conservan la autenticación
+  y el manejo de errores actuales. El panel solicita el análisis explícitamente;
+  cambiar la selección o el capítulo descarta resultados anteriores. Si la
+  selección devuelta difiere del texto que muestra el lector, se pide reabrir el
+  capítulo en lugar de presentar anotaciones sobre otro texto.
+
+Se fijan **spaCy 3.8.18** y **fr_core_news_sm 3.8.0**. El wheel del modelo se
+referencia en `[tool.uv.sources]` y se bloquea con sus hashes en `uv.lock`.
+`uv sync --frozen --package app` instala ambas dependencias también en Docker;
+no hay descargas de modelos durante las peticiones. El componente NER se excluye
+porque esta fase no solicita reconocimiento de entidades.
+
+Medición orientativa en este entorno con Python 3.14.3: importar spaCy tomó
+0,59 s; cargar el modelo, 1,58 s; analizar 4096 caracteres, entre 21,8 y 26,3 ms
+(cinco ejecuciones); pico RSS del proceso, 307,5 MiB. No es una garantía de producción.
+El Docker actual tiene cuatro workers y cada uno carga su propio pipeline. La
+primera petición de cada proceso paga el coste de carga; las siguientes lo reutilizan.
+
+### Conceptos de spaCy
+
+1. **Pipeline NLP:** secuencia de operaciones que transforma texto en un documento
+   anotado. Este modelo utiliza `tok2vec`, `morphologizer`, `parser`,
+   `attribute_ruler` y `lemmatizer`.
+2. **Tokenizer y componentes entrenados:** el tokenizer francés divide caracteres
+   en tokens mediante convenciones y excepciones; los componentes entrenados
+   predicen anotaciones según el contexto. Tokenizar no equivale a entender la frase.
+3. **Doc, Token y Span:** `Doc` contiene los tokens y anotaciones del texto analizado;
+   `Token` representa un token con su posición (`idx`); `Span` es una secuencia
+   contigua de tokens, como una oración de `doc.sents`.
+4. **Lematización:** propone una forma base, por ejemplo `aperçut → apercevoir`.
+   El lematizador francés utiliza el análisis y recursos del pipeline; no es una
+   traducción ni un diccionario infalible.
+5. **POS, morfología y dependencias:** POS clasifica un token (`VERB`, `NOUN`, etc.).
+   Morfología contiene atributos como `Person=3`, `Number=Sing` o `Tense=Past`.
+   Las dependencias describen vínculos con un núcleo, por ejemplo `nsubj` u `obj`.
+   `ROOT` señala el núcleo de la oración, cuya cabeza es él mismo.
+6. **Modelo elegido:** `sm` está optimizado para CPU y no incorpora los vectores
+   estáticos de `md`/`lg` ni un transformer. Permite comenzar con menos recursos.
+   Su entrenamiento es principalmente periodístico: una novela puede diferir.
+7. **Offsets:** `Token.idx` es relativo a la ventana Python; el servicio suma el
+   origen de esa ventana y convierte explícitamente a UTF-16 para el lector.
+   La selección del DOM ya se verifica contra el contenido completo, no contra
+   el texto visible de un párrafo. Emoji y caracteres combinados no se normalizan.
+8. **Límites:** las predicciones pueden ser erróneas; el texto largo se acota y
+   una oración truncada puede reducir su calidad. No se reconocen locuciones
+   idiomáticas como unidades semánticas: `se rendit compte` sigue siendo varios
+   tokens. No se infiere el tiempo global de una perífrasis a partir de un token.
+9. **Ejemplo aislado**, después de instalar el entorno autorizado:
+
+```console
+cd backend
+../.venv/bin/python - <<'PY'
+import spacy
+nlp = spacy.load("fr_core_news_sm", exclude=["ner"])
+doc = nlp("Elle aperçut un homme.")
+for token in doc:
+    print(token.text, token.idx, token.lemma_, token.pos_, token.morph, token.dep_, token.head.text)
+print([sentence.text for sentence in doc.sents])
+PY
+```
+
+### Limitaciones observadas y pruebas
+
+Con las versiones fijadas se han observado estos fallos, que **no corregimos con
+reglas específicas ni ocultamos en la interfaz**:
+
+| Ejemplo | Objetivo lingüístico | Predicción incorrecta |
+| --- | --- | --- |
+| `Elle aperçut un homme.` | `aperçut`: passé simple, `Tense=Past` | `Tense=Pres`; lema `apercevoir` y POS `VERB` sí correctos |
+| `Je mange une pomme.` | `mange`: primera persona | `Person=3` |
+| `Nous nous promenions dans la rue.` | `promenions`: imparfait, `Tense=Imp` | `Tense=Pres` |
+
+Los tests de esos tres objetivos llevan `xfail(strict=True)` con una explicación.
+Un cambio de modelo que los resuelva producirá XPASS y exigirá revisar el marcador.
+El resto comprueba lemas/POS representativos, morfología disponible, texto y
+posiciones exactas, Unicode, ventanas acotadas, anotaciones ausentes y aislamiento
+entre usuarios. La API incluye las versiones del modelo y de spaCy para reproducir
+un resultado. No se persisten los análisis.

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { AxiosError } from "axios"
 
 import { BooksService, type ChapterSummary } from "@/client"
@@ -60,5 +60,31 @@ export function useChapter(bookId: string, chapterId: string) {
       ).data,
     enabled: !!user,
     retry,
+  })
+}
+
+export function useAnalyzeSelection() {
+  return useMutation({
+    mutationFn: async ({
+      bookId,
+      chapterId,
+      startOffset,
+      endOffset,
+    }: {
+      bookId: string
+      chapterId: string
+      startOffset: number
+      endOffset: number
+    }) =>
+      (
+        await BooksService.analyzeChapterSelection({
+          path: { book_id: bookId, chapter_id: chapterId },
+          body: {
+            start_offset: startOffset,
+            end_offset: endOffset,
+            offset_unit: "utf-16",
+          },
+        })
+      ).data,
   })
 }

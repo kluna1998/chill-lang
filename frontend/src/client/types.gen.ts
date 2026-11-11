@@ -5,6 +5,76 @@ export type ClientOptions = {
 };
 
 /**
+ * AnalyzedSentence
+ */
+export type AnalyzedSentence = {
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Start Offset
+     */
+    start_offset: number;
+    /**
+     * End Offset
+     */
+    end_offset: number;
+    /**
+     * Is Truncated
+     */
+    is_truncated: boolean;
+};
+
+/**
+ * AnalyzedToken
+ */
+export type AnalyzedToken = {
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Lemma
+     */
+    lemma: string | null;
+    /**
+     * Pos
+     */
+    pos: string | null;
+    /**
+     * Morphology
+     */
+    morphology: {
+        [key: string]: Array<string>;
+    } | null;
+    /**
+     * Dependency
+     */
+    dependency: string | null;
+    /**
+     * Start Offset
+     */
+    start_offset: number;
+    /**
+     * End Offset
+     */
+    end_offset: number;
+    /**
+     * Head Text
+     */
+    head_text: string | null;
+    /**
+     * Head Start Offset
+     */
+    head_start_offset: number | null;
+    /**
+     * Head End Offset
+     */
+    head_end_offset: number | null;
+};
+
+/**
  * Body_books-import_epub_book
  */
 export type Body_books_import_epub_book = {
@@ -342,6 +412,94 @@ export type PrivateUserCreate = {
      * Is Verified
      */
     is_verified?: boolean;
+};
+
+/**
+ * SelectionAnalysis
+ */
+export type SelectionAnalysis = {
+    /**
+     * Book Id
+     */
+    book_id: string;
+    /**
+     * Chapter Id
+     */
+    chapter_id: string;
+    /**
+     * Offset Unit
+     */
+    offset_unit?: 'utf-16';
+    /**
+     * Selected Text
+     */
+    selected_text: string;
+    /**
+     * Start Offset
+     */
+    start_offset: number;
+    /**
+     * End Offset
+     */
+    end_offset: number;
+    /**
+     * Context
+     */
+    context: string;
+    /**
+     * Context Start Offset
+     */
+    context_start_offset: number;
+    /**
+     * Context End Offset
+     */
+    context_end_offset: number;
+    /**
+     * Context Truncated
+     */
+    context_truncated: boolean;
+    /**
+     * Sentences
+     */
+    sentences: Array<AnalyzedSentence>;
+    /**
+     * Tokens
+     */
+    tokens: Array<AnalyzedToken>;
+    /**
+     * Selection Covers Full Tokens
+     */
+    selection_covers_full_tokens: boolean;
+    /**
+     * Model Name
+     */
+    model_name: string;
+    /**
+     * Model Version
+     */
+    model_version: string;
+    /**
+     * Spacy Version
+     */
+    spacy_version: string;
+};
+
+/**
+ * SelectionAnalysisRequest
+ */
+export type SelectionAnalysisRequest = {
+    /**
+     * Start Offset
+     */
+    start_offset: number;
+    /**
+     * End Offset
+     */
+    end_offset: number;
+    /**
+     * Offset Unit
+     */
+    offset_unit?: 'utf-16';
 };
 
 /**
@@ -1476,6 +1634,40 @@ export type booksUpdateChapterResponses = {
 };
 
 export type booksUpdateChapterResponse = booksUpdateChapterResponses[keyof booksUpdateChapterResponses];
+
+export type booksAnalyzeChapterSelectionData = {
+    body: SelectionAnalysisRequest;
+    path: {
+        /**
+         * Book Id
+         */
+        book_id: string;
+        /**
+         * Chapter Id
+         */
+        chapter_id: string;
+    };
+    query?: never;
+    url: '/api/v1/books/{book_id}/chapters/{chapter_id}/analyze';
+};
+
+export type booksAnalyzeChapterSelectionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksAnalyzeChapterSelectionError = booksAnalyzeChapterSelectionErrors[keyof booksAnalyzeChapterSelectionErrors];
+
+export type booksAnalyzeChapterSelectionResponses = {
+    /**
+     * Successful Response
+     */
+    200: SelectionAnalysis;
+};
+
+export type booksAnalyzeChapterSelectionResponse = booksAnalyzeChapterSelectionResponses[keyof booksAnalyzeChapterSelectionResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;

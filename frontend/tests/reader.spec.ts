@@ -326,3 +326,118 @@ test("Mouse selection and keyboard extension update the contextual panel", async
     .poll(() => page.getByTestId("selected-text").textContent())
     .toBe("l’homme ")
 })
+
+test("Linguistic analysis uses UTF-16 chapter offsets and shows model output", async ({
+  page,
+}) => {
+  const start = content.lastIndexOf("l’homme")
+  await page.route("**/chapters/*/analyze", (route) => {
+    expect(route.request().method()).toBe("POST")
+    expect(route.request().headers().authorization).toBe("Bearer test-token")
+    expect(route.request().postDataJSON()).toEqual({
+      start_offset: start,
+      end_offset: start + 7,
+      offset_unit: "utf-16",
+    })
+    return route.fulfill({
+      json: {
+        selected_text: "l’homme",
+        context: "Une autre phrase avec l’homme.",
+        context_truncated: false,
+        selection_covers_full_tokens: true,
+        tokens: [
+          {
+            text: "homme",
+            lemma: "homme",
+            pos: "NOUN",
+            morphology: { Gender: ["Masc"], Number: ["Sing"] },
+            dependency: "obj",
+            head_text: "avec",
+            start_offset: start + 2,
+          },
+        ],
+      },
+    })
+  })
+  await page.goto(path)
+  await selectOffsets(page, start, start + 7)
+  await page.getByRole("button", { name: "Analizar selección" }).click()
+  const tokens = page.getByRole("list", { name: "Tokens analizados" })
+  await expect(tokens).toContainText("Lema: homme")
+  await expect(tokens).toContainText("Categoría (POS): NOUN")
+  await expect(tokens).toContainText("Gender: Masc")
+  await expect(tokens).toContainText("Dependencia: obj")
+})
+
+test("Late analysis cannot replace a newer selection", async ({ page }) => {
+  let finish: () => void = () => {}
+  const responseReady = new Promise<void>((resolve) => {
+    finish = resolve
+  })
+  await page.route("**/chapters/*/analyze", async (route) => {
+    await responseReady
+    await route.fulfill({
+      json: {
+        selected_text: content.slice(3, 8),
+        context: "OLD ANALYSIS",
+        tokens: [],
+        context_truncated: false,
+        selection_covers_full_tokens: true,
+      },
+    })
+  })
+  await page.goto(path)
+  await selectOffsets(page, 3, 8)
+  await page.getByRole("button", { name: "Analizar selección" }).click()
+  await expect(
+    page.getByRole("status").filter({ hasText: "Analizando selección" }),
+  ).toBeVisible()
+  const second = content.lastIndexOf("l’homme")
+  await selectOffsets(page, second, second + 7)
+  await expect(page.getByTestId("selected-text")).toHaveText("l’homme")
+  const completed = page.waitForResponse((response) =>
+    response.url().endsWith("/analyze"),
+  )
+  finish()
+  await (await completed).finished()
+  await expect(page.getByText("OLD ANALYSIS", { exact: true })).toHaveCount(0)
+  await expect(
+    page.getByRole("button", { name: "Analizar selección" }),
+  ).toBeEnabled()
+})
+
+test("Analysis errors remain in the panel and can be retried", async ({
+  page,
+}) => {
+  let fail = true
+  await page.route("**/chapters/*/analyze", (route) =>
+    fail
+      ? route.fulfill({
+          status: 503,
+          json: { detail: "El modelo lingüístico francés no está disponible." },
+        })
+      : route.fulfill({
+          json: {
+            selected_text: content.slice(3, 8),
+            context: "Recovered context",
+            context_truncated: true,
+            selection_covers_full_tokens: false,
+            tokens: [],
+          },
+        }),
+  )
+  await page.goto(path)
+  await selectOffsets(page, 3, 8)
+  await page.getByRole("button", { name: "Analizar selección" }).click()
+  await expect(page.getByRole("alert")).toContainText(
+    "El modelo lingüístico francés no está disponible.",
+  )
+  fail = false
+  await page.getByRole("button", { name: "Analizar selección" }).click()
+  await expect(
+    page.getByText("Recovered context", { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByText("Contexto limitado:", { exact: false }),
+  ).toBeVisible()
+})

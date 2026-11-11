@@ -1,7 +1,8 @@
 import uuid
 from datetime import UTC, datetime
+from typing import Literal, Self
 
-from pydantic import EmailStr, field_validator
+from pydantic import EmailStr, field_validator, model_validator
 from sqlalchemy import DateTime, Text
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -221,3 +222,56 @@ class TokenPayload(SQLModel):
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class SelectionAnalysisRequest(SQLModel):
+    start_offset: int = Field(ge=0)
+    end_offset: int = Field(ge=1)
+    offset_unit: Literal["utf-16"] = "utf-16"
+
+    @model_validator(mode="after")
+    def validate_selection(self) -> Self:
+        if self.end_offset <= self.start_offset:
+            raise ValueError("El final debe ser posterior al inicio de la selección.")
+        if self.end_offset - self.start_offset > 512:
+            raise ValueError("Selecciona como máximo 512 unidades UTF-16.")
+        return self
+
+
+class AnalyzedSentence(SQLModel):
+    text: str
+    start_offset: int
+    end_offset: int
+    is_truncated: bool
+
+
+class AnalyzedToken(SQLModel):
+    text: str
+    lemma: str | None
+    pos: str | None
+    morphology: dict[str, list[str]] | None
+    dependency: str | None
+    start_offset: int
+    end_offset: int
+    head_text: str | None
+    head_start_offset: int | None
+    head_end_offset: int | None
+
+
+class SelectionAnalysis(SQLModel):
+    book_id: uuid.UUID
+    chapter_id: uuid.UUID
+    offset_unit: Literal["utf-16"] = "utf-16"
+    selected_text: str
+    start_offset: int
+    end_offset: int
+    context: str
+    context_start_offset: int
+    context_end_offset: int
+    context_truncated: bool
+    sentences: list[AnalyzedSentence]
+    tokens: list[AnalyzedToken]
+    selection_covers_full_tokens: bool
+    model_name: str
+    model_version: str
+    spacy_version: str

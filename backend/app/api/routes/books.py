@@ -18,10 +18,13 @@ from app.models import (
     ChapterSummary,
     ChapterUpdate,
     Message,
+    SelectionAnalysis,
+    SelectionAnalysisRequest,
 )
 from app.services.book_import import MAX_TXT_BYTES, BookImportError, parse_txt_book
 from app.services.book_persistence import persist_imported_book
 from app.services.epub_import import MAX_EPUB_BYTES, parse_epub_book
+from app.services.french_nlp import InvalidSelection, NLPUnavailable, analyze_selection
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -220,6 +223,32 @@ def get_chapter(
     chapter_id: uuid.UUID,
 ) -> Chapter:
     return _get_owned_chapter(session, book_id, chapter_id, current_user.id)
+
+
+@router.post(
+    "/{book_id}/chapters/{chapter_id}/analyze", response_model=SelectionAnalysis
+)
+def analyze_chapter_selection(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    book_id: uuid.UUID,
+    chapter_id: uuid.UUID,
+    selection: SelectionAnalysisRequest,
+) -> SelectionAnalysis:
+    chapter = _get_owned_chapter(session, book_id, chapter_id, current_user.id)
+    try:
+        return analyze_selection(
+            chapter.content,
+            book_id,
+            chapter_id,
+            selection.start_offset,
+            selection.end_offset,
+        )
+    except InvalidSelection as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except NLPUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.patch("/{book_id}/chapters/{chapter_id}", response_model=ChapterPublic)
