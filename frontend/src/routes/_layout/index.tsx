@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { useState } from "react"
 
 import { BooksService } from "@/client"
@@ -74,7 +74,12 @@ function Library() {
                       {book.author || "Sin autor"}
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" asChild>
+                      <Link to="/books/$bookId" params={{ bookId: book.id }}>
+                        Abrir libro
+                      </Link>
+                    </Button>
                     <BookForm book={book} />
                     <DeleteBook
                       book={book}

@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 
 from pydantic import EmailStr, field_validator
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, Text
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -121,6 +121,10 @@ class Book(BookBase, table=True):
         default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
     )
     owner: User | None = Relationship(back_populates="books")
+    chapters: list["Chapter"] = Relationship(  # noqa: UP037
+        back_populates="book",
+        cascade_delete=True,
+    )
 
 
 class BookCreate(BookBase):
@@ -147,6 +151,54 @@ class BookPublic(BookBase):
 
 class BooksPublic(SQLModel):
     data: list[BookPublic]
+    count: int
+
+
+class ChapterBase(SQLModel):
+    title: str = Field(min_length=1, max_length=255)
+    content: str = Field(min_length=1, sa_type=Text)
+    position: int = Field(ge=1)
+
+
+class Chapter(ChapterBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    book_id: uuid.UUID = Field(
+        foreign_key="book.id", nullable=False, ondelete="CASCADE"
+    )
+    book: Book | None = Relationship(back_populates="chapters")
+
+
+class ChapterCreate(ChapterBase):
+    pass
+
+
+class ChapterUpdate(SQLModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    content: str | None = Field(default=None, min_length=1)
+    position: int | None = Field(default=None, ge=1)
+
+    @field_validator("title", "content", "position")
+    @classmethod
+    def fields_must_not_be_null(cls, value: str | int | None) -> str | int:
+        if value is None:
+            raise ValueError("Chapter fields cannot be null")
+        return value
+
+
+class ChapterPublic(ChapterBase):
+    id: uuid.UUID
+    book_id: uuid.UUID
+
+
+class ChapterSummary(SQLModel):
+    id: uuid.UUID
+    book_id: uuid.UUID
+    title: str
+    position: int
+
+
+class ChaptersPublic(SQLModel):
+    data: list[ChapterSummary]
     count: int
 
 

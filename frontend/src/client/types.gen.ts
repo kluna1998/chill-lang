@@ -103,6 +103,104 @@ export type BooksPublic = {
 };
 
 /**
+ * ChapterCreate
+ */
+export type ChapterCreate = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Content
+     */
+    content: string;
+    /**
+     * Position
+     */
+    position: number;
+};
+
+/**
+ * ChapterPublic
+ */
+export type ChapterPublic = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Content
+     */
+    content: string;
+    /**
+     * Position
+     */
+    position: number;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Book Id
+     */
+    book_id: string;
+};
+
+/**
+ * ChapterSummary
+ */
+export type ChapterSummary = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Book Id
+     */
+    book_id: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Position
+     */
+    position: number;
+};
+
+/**
+ * ChapterUpdate
+ */
+export type ChapterUpdate = {
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Content
+     */
+    content?: string | null;
+    /**
+     * Position
+     */
+    position?: number | null;
+};
+
+/**
+ * ChaptersPublic
+ */
+export type ChaptersPublic = {
+    /**
+     * Data
+     */
+    data: Array<ChapterSummary>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * HTTPValidationError
  */
 export type HTTPValidationError = {
@@ -1137,6 +1235,177 @@ export type booksUpdateBookResponses = {
 };
 
 export type booksUpdateBookResponse = booksUpdateBookResponses[keyof booksUpdateBookResponses];
+
+export type booksReadChaptersData = {
+    body?: never;
+    path: {
+        /**
+         * Book Id
+         */
+        book_id: string;
+    };
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/books/{book_id}/chapters';
+};
+
+export type booksReadChaptersErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksReadChaptersError = booksReadChaptersErrors[keyof booksReadChaptersErrors];
+
+export type booksReadChaptersResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChaptersPublic;
+};
+
+export type booksReadChaptersResponse = booksReadChaptersResponses[keyof booksReadChaptersResponses];
+
+export type booksCreateChapterData = {
+    body: ChapterCreate;
+    path: {
+        /**
+         * Book Id
+         */
+        book_id: string;
+    };
+    query?: never;
+    url: '/api/v1/books/{book_id}/chapters';
+};
+
+export type booksCreateChapterErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksCreateChapterError = booksCreateChapterErrors[keyof booksCreateChapterErrors];
+
+export type booksCreateChapterResponses = {
+    /**
+     * Successful Response
+     */
+    201: ChapterPublic;
+};
+
+export type booksCreateChapterResponse = booksCreateChapterResponses[keyof booksCreateChapterResponses];
+
+export type booksDeleteChapterData = {
+    body?: never;
+    path: {
+        /**
+         * Book Id
+         */
+        book_id: string;
+        /**
+         * Chapter Id
+         */
+        chapter_id: string;
+    };
+    query?: never;
+    url: '/api/v1/books/{book_id}/chapters/{chapter_id}';
+};
+
+export type booksDeleteChapterErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksDeleteChapterError = booksDeleteChapterErrors[keyof booksDeleteChapterErrors];
+
+export type booksDeleteChapterResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type booksDeleteChapterResponse = booksDeleteChapterResponses[keyof booksDeleteChapterResponses];
+
+export type booksGetChapterData = {
+    body?: never;
+    path: {
+        /**
+         * Book Id
+         */
+        book_id: string;
+        /**
+         * Chapter Id
+         */
+        chapter_id: string;
+    };
+    query?: never;
+    url: '/api/v1/books/{book_id}/chapters/{chapter_id}';
+};
+
+export type booksGetChapterErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksGetChapterError = booksGetChapterErrors[keyof booksGetChapterErrors];
+
+export type booksGetChapterResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChapterPublic;
+};
+
+export type booksGetChapterResponse = booksGetChapterResponses[keyof booksGetChapterResponses];
+
+export type booksUpdateChapterData = {
+    body: ChapterUpdate;
+    path: {
+        /**
+         * Book Id
+         */
+        book_id: string;
+        /**
+         * Chapter Id
+         */
+        chapter_id: string;
+    };
+    query?: never;
+    url: '/api/v1/books/{book_id}/chapters/{chapter_id}';
+};
+
+export type booksUpdateChapterErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksUpdateChapterError = booksUpdateChapterErrors[keyof booksUpdateChapterErrors];
+
+export type booksUpdateChapterResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChapterPublic;
+};
+
+export type booksUpdateChapterResponse = booksUpdateChapterResponses[keyof booksUpdateChapterResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;

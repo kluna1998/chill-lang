@@ -18,6 +18,8 @@ import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutItemsRouteImport } from './routes/_layout/items'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutBooksBookIdIndexRouteImport } from './routes/_layout/books/$bookId/index'
+import { Route as LayoutBooksBookIdChaptersChapterIdRouteImport } from './routes/_layout/books/$bookId/chapters/$chapterId'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -63,6 +65,17 @@ const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutBooksBookIdIndexRoute = LayoutBooksBookIdIndexRouteImport.update({
+  id: '/books/$bookId/',
+  path: '/books/$bookId/',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutBooksBookIdChaptersChapterIdRoute =
+  LayoutBooksBookIdChaptersChapterIdRouteImport.update({
+    id: '/books/$bookId/chapters/$chapterId',
+    path: '/books/$bookId/chapters/$chapterId',
+    getParentRoute: () => LayoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -73,6 +86,8 @@ export interface FileRoutesByFullPath {
   '/admin': typeof LayoutAdminRoute
   '/items': typeof LayoutItemsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/books/$bookId/': typeof LayoutBooksBookIdIndexRoute
+  '/books/$bookId/chapters/$chapterId': typeof LayoutBooksBookIdChaptersChapterIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -83,6 +98,8 @@ export interface FileRoutesByTo {
   '/items': typeof LayoutItemsRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
+  '/books/$bookId': typeof LayoutBooksBookIdIndexRoute
+  '/books/$bookId/chapters/$chapterId': typeof LayoutBooksBookIdChaptersChapterIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -95,6 +112,8 @@ export interface FileRoutesById {
   '/_layout/items': typeof LayoutItemsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/_layout/books/$bookId/': typeof LayoutBooksBookIdIndexRoute
+  '/_layout/books/$bookId/chapters/$chapterId': typeof LayoutBooksBookIdChaptersChapterIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -107,6 +126,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/items'
     | '/settings'
+    | '/books/$bookId/'
+    | '/books/$bookId/chapters/$chapterId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -117,6 +138,8 @@ export interface FileRouteTypes {
     | '/items'
     | '/settings'
     | '/'
+    | '/books/$bookId'
+    | '/books/$bookId/chapters/$chapterId'
   id:
     | '__root__'
     | '/_layout'
@@ -128,6 +151,8 @@ export interface FileRouteTypes {
     | '/_layout/items'
     | '/_layout/settings'
     | '/_layout/'
+    | '/_layout/books/$bookId/'
+    | '/_layout/books/$bookId/chapters/$chapterId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -203,6 +228,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/books/$bookId/': {
+      id: '/_layout/books/$bookId/'
+      path: '/books/$bookId'
+      fullPath: '/books/$bookId/'
+      preLoaderRoute: typeof LayoutBooksBookIdIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/books/$bookId/chapters/$chapterId': {
+      id: '/_layout/books/$bookId/chapters/$chapterId'
+      path: '/books/$bookId/chapters/$chapterId'
+      fullPath: '/books/$bookId/chapters/$chapterId'
+      preLoaderRoute: typeof LayoutBooksBookIdChaptersChapterIdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
   }
 }
 
@@ -211,6 +250,8 @@ interface LayoutRouteChildren {
   LayoutItemsRoute: typeof LayoutItemsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
+  LayoutBooksBookIdIndexRoute: typeof LayoutBooksBookIdIndexRoute
+  LayoutBooksBookIdChaptersChapterIdRoute: typeof LayoutBooksBookIdChaptersChapterIdRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
@@ -218,6 +259,9 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutItemsRoute: LayoutItemsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
+  LayoutBooksBookIdIndexRoute: LayoutBooksBookIdIndexRoute,
+  LayoutBooksBookIdChaptersChapterIdRoute:
+    LayoutBooksBookIdChaptersChapterIdRoute,
 }
 
 const LayoutRouteWithChildren =
