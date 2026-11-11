@@ -2,7 +2,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import Literal, Self
 
-from pydantic import EmailStr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, model_validator
+from pydantic import Field as PydanticField
 from sqlalchemy import DateTime, Text
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -275,3 +276,22 @@ class SelectionAnalysis(SQLModel):
     model_name: str
     model_version: str
     spacy_version: str
+
+
+class ContextualExplanation(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    contextual_translation: str = PydanticField(min_length=1, max_length=500)
+    meaning_explanation: str | None = PydanticField(min_length=1, max_length=1200)
+    grammar_explanation: str | None = PydanticField(min_length=1, max_length=1000)
+    sentence_translation: str | None = PydanticField(min_length=1, max_length=1200)
+    uncertainty_note: str | None = PydanticField(min_length=1, max_length=500)
+
+
+class SelectionExplanation(SQLModel):
+    book_id: uuid.UUID
+    chapter_id: uuid.UUID
+    start_offset: int
+    end_offset: int
+    offset_unit: Literal["utf-16"] = "utf-16"
+    selected_text: str
+    explanation: ContextualExplanation

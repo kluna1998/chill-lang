@@ -441,3 +441,163 @@ test("Analysis errors remain in the panel and can be retried", async ({
     page.getByText("Contexto limitado:", { exact: false }),
   ).toBeVisible()
 })
+
+test("AI explanation is explicit, bounded to the selection and keeps NLP independent", async ({
+  page,
+}) => {
+  let calls = 0
+  const start = content.lastIndexOf("l’homme")
+  await page.route("**/chapters/*/explain", (route) => {
+    calls++
+    expect(route.request().headers().authorization).toBe("Bearer test-token")
+    expect(route.request().postDataJSON()).toEqual({
+      start_offset: start,
+      end_offset: start + 7,
+      offset_unit: "utf-16",
+    })
+    return route.fulfill({
+      json: {
+        selected_text: "l’homme",
+        explanation: {
+          contextual_translation: "el hombre",
+          meaning_explanation: "Designa al hombre de esta escena.",
+          grammar_explanation: "El artículo se elide ante una vocal.",
+          sentence_translation: null,
+          uncertainty_note: "El contexto disponible es breve.",
+        },
+      },
+    })
+  })
+  await page.goto(path)
+  await selectOffsets(page, start, start + 7)
+  await expect(
+    page.getByRole("button", { name: "Explicar con IA" }),
+  ).toBeVisible()
+  expect(calls).toBe(0)
+  await page.getByRole("button", { name: "Explicar con IA" }).click()
+  await expect(page.getByTestId("contextual-translation")).toHaveText(
+    "el hombre",
+  )
+  await expect(
+    page.getByText("Designa al hombre de esta escena."),
+  ).toBeVisible()
+  await expect(
+    page.getByText("El artículo se elide ante una vocal."),
+  ).toBeVisible()
+  await expect(
+    page.getByText("El contexto disponible es breve.", { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole("heading", { name: "Traducción de la oración" }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole("button", { name: "Analizar selección" }),
+  ).toBeEnabled()
+  expect(calls).toBe(1)
+})
+
+test("AI translation without explanations leaves no empty paragraphs", async ({
+  page,
+}) => {
+  await page.route("**/chapters/*/explain", (route) =>
+    route.fulfill({
+      json: {
+        selected_text: "l’homme",
+        explanation: {
+          contextual_translation: "el hombre",
+          meaning_explanation: null,
+          grammar_explanation: null,
+          sentence_translation: null,
+          uncertainty_note: null,
+        },
+      },
+    }),
+  )
+  await page.goto(path)
+  const start = content.lastIndexOf("l’homme")
+  await selectOffsets(page, start, start + 7)
+  await page.getByRole("button", { name: "Explicar con IA" }).click()
+  const translation = page.getByTestId("contextual-translation")
+  await expect(translation).toHaveText("el hombre")
+  await expect(translation).toHaveClass(/font-semibold/)
+  await expect(translation.locator("..").locator("p")).toHaveText([
+    "el hombre",
+    "Explicación generada por IA; puede contener errores.",
+  ])
+  await expect(
+    page.getByRole("heading", { name: "Gramática", exact: true }),
+  ).toHaveCount(0)
+})
+
+test("AI explanation errors preserve selection and are not retried automatically", async ({
+  page,
+}) => {
+  let calls = 0
+  await page.route("**/chapters/*/explain", (route) => {
+    calls++
+    return route.fulfill({
+      status: 503,
+      json: { detail: "Las explicaciones con IA todavía no están activadas." },
+    })
+  })
+  await page.goto(path)
+  await selectOffsets(page, 3, 8)
+  await page.getByRole("button", { name: "Explicar con IA" }).click()
+  await expect(page.getByRole("alert")).toContainText(
+    "todavía no están activadas",
+  )
+  await expect(page.getByTestId("selected-text")).toHaveText(
+    content.slice(3, 8),
+  )
+  expect(calls).toBe(1)
+  await expect(
+    page.getByRole("button", { name: "Analizar selección" }),
+  ).toBeEnabled()
+})
+
+test("Changing selection hides a late AI response and a pending request disables its button", async ({
+  page,
+}) => {
+  let finish: () => void = () => {}
+  const ready = new Promise<void>((resolve) => {
+    finish = resolve
+  })
+  await page.route("**/chapters/*/explain", async (route) => {
+    await ready
+    await route.fulfill({
+      json: {
+        selected_text: content.slice(3, 8),
+        explanation: {
+          contextual_translation: "OLD AI TRANSLATION",
+          meaning_explanation: "Old meaning",
+          grammar_explanation: null,
+          sentence_translation: null,
+          uncertainty_note: null,
+        },
+      },
+    })
+  })
+  await page.goto(path)
+  await selectOffsets(page, 3, 8)
+  await page.getByRole("button", { name: "Explicar con IA" }).click()
+  await expect(
+    page.getByRole("button", { name: "Explicar con IA" }),
+  ).toBeDisabled()
+  await expect(
+    page.getByRole("status").filter({ hasText: "Preparando explicación" }),
+  ).toBeVisible()
+  const start = content.lastIndexOf("l’homme")
+  await selectOffsets(page, start, start + 7)
+  await expect(page.getByTestId("selected-text")).toHaveText("l’homme")
+  const completed = page.waitForResponse((response) =>
+    response.url().endsWith("/explain"),
+  )
+  finish()
+  await (await completed).finished()
+  await expect(
+    page.getByText("OLD AI TRANSLATION", { exact: true }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole("button", { name: "Explicar con IA" }),
+  ).toBeEnabled()
+})

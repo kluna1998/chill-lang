@@ -88,3 +88,30 @@ export function useAnalyzeSelection() {
       ).data,
   })
 }
+
+export function useExplainSelection() {
+  return useMutation({
+    retry: false,
+    mutationFn: async ({
+      bookId,
+      chapterId,
+      startOffset,
+      endOffset,
+    }: {
+      bookId: string
+      chapterId: string
+      startOffset: number
+      endOffset: number
+    }) =>
+      (
+        await BooksService.explainChapterSelection({
+          path: { book_id: bookId, chapter_id: chapterId },
+          body: {
+            start_offset: startOffset,
+            end_offset: endOffset,
+            offset_unit: "utf-16",
+          },
+        })
+      ).data,
+  })
+}

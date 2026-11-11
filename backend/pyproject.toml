@@ -22,6 +22,7 @@ dependencies = [
     "lxml==6.1.3",
     "spacy==3.8.18",
     "fr-core-news-sm",
+    "openai==3.49.0",
 ]
 
 [dependency-groups]

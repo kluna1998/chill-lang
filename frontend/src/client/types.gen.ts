@@ -291,6 +291,32 @@ export type ChaptersPublic = {
 };
 
 /**
+ * ContextualExplanation
+ */
+export type ContextualExplanation = {
+    /**
+     * Contextual Translation
+     */
+    contextual_translation: string;
+    /**
+     * Meaning Explanation
+     */
+    meaning_explanation: string | null;
+    /**
+     * Grammar Explanation
+     */
+    grammar_explanation: string | null;
+    /**
+     * Sentence Translation
+     */
+    sentence_translation: string | null;
+    /**
+     * Uncertainty Note
+     */
+    uncertainty_note: string | null;
+};
+
+/**
  * HTTPValidationError
  */
 export type HTTPValidationError = {
@@ -500,6 +526,37 @@ export type SelectionAnalysisRequest = {
      * Offset Unit
      */
     offset_unit?: 'utf-16';
+};
+
+/**
+ * SelectionExplanation
+ */
+export type SelectionExplanation = {
+    /**
+     * Book Id
+     */
+    book_id: string;
+    /**
+     * Chapter Id
+     */
+    chapter_id: string;
+    /**
+     * Start Offset
+     */
+    start_offset: number;
+    /**
+     * End Offset
+     */
+    end_offset: number;
+    /**
+     * Offset Unit
+     */
+    offset_unit?: 'utf-16';
+    /**
+     * Selected Text
+     */
+    selected_text: string;
+    explanation: ContextualExplanation;
 };
 
 /**
@@ -1668,6 +1725,40 @@ export type booksAnalyzeChapterSelectionResponses = {
 };
 
 export type booksAnalyzeChapterSelectionResponse = booksAnalyzeChapterSelectionResponses[keyof booksAnalyzeChapterSelectionResponses];
+
+export type booksExplainChapterSelectionData = {
+    body: SelectionAnalysisRequest;
+    path: {
+        /**
+         * Book Id
+         */
+        book_id: string;
+        /**
+         * Chapter Id
+         */
+        chapter_id: string;
+    };
+    query?: never;
+    url: '/api/v1/books/{book_id}/chapters/{chapter_id}/explain';
+};
+
+export type booksExplainChapterSelectionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksExplainChapterSelectionError = booksExplainChapterSelectionErrors[keyof booksExplainChapterSelectionErrors];
+
+export type booksExplainChapterSelectionResponses = {
+    /**
+     * Successful Response
+     */
+    200: SelectionExplanation;
+};
+
+export type booksExplainChapterSelectionResponse = booksExplainChapterSelectionResponses[keyof booksExplainChapterSelectionResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;

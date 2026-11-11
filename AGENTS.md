@@ -4,7 +4,7 @@
 - Backend: Python, FastAPI, SQLModel, Alembic.
 - Frontend: React, TypeScript.
 - NLP: spaCy and deterministic linguistic rules.
-- AI: DSPy, with Pydantic validation.
+- AI: MVP uses the OpenAI API directly, with Pydantic validation. DSPy is postponed until after the MVP. Do not introduce agents, RAG, or additional frameworks without approval.
 - Follow a modular monolith architecture.
 - Keep business logic separate from API routes.
 

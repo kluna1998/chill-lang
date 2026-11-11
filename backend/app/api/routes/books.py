@@ -20,9 +20,11 @@ from app.models import (
     Message,
     SelectionAnalysis,
     SelectionAnalysisRequest,
+    SelectionExplanation,
 )
 from app.services.book_import import MAX_TXT_BYTES, BookImportError, parse_txt_book
 from app.services.book_persistence import persist_imported_book
+from app.services.contextual_explanation import ExplanationError, explain_selection
 from app.services.epub_import import MAX_EPUB_BYTES, parse_epub_book
 from app.services.french_nlp import InvalidSelection, NLPUnavailable, analyze_selection
 
@@ -280,3 +282,36 @@ def delete_chapter(
     session.delete(chapter)
     session.commit()
     return Message(message="Chapter deleted successfully")
+
+
+@router.post(
+    "/{book_id}/chapters/{chapter_id}/explain", response_model=SelectionExplanation
+)
+def explain_chapter_selection(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    book_id: uuid.UUID,
+    chapter_id: uuid.UUID,
+    selection: SelectionAnalysisRequest,
+) -> SelectionExplanation:
+    chapter = _get_owned_chapter(session, book_id, chapter_id, current_user.id)
+    try:
+        analysis = analyze_selection(
+            chapter.content,
+            book_id,
+            chapter_id,
+            selection.start_offset,
+            selection.end_offset,
+        )
+        return explain_selection(analysis, current_user.id)
+    except InvalidSelection as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    except NLPUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from None
+    except ExplanationError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.message,
+            headers={"Retry-After": "60"} if exc.status_code == 429 else None,
+        ) from None

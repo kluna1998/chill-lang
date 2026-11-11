@@ -1,7 +1,10 @@
 import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
-import { useAnalyzeSelection } from "@/hooks/useBookQueries"
+import {
+  useAnalyzeSelection,
+  useExplainSelection,
+} from "@/hooks/useBookQueries"
 import { extractErrorMessage } from "@/utils"
 import type { TextSelectionContext } from "./selection"
 
@@ -50,6 +53,10 @@ export function ReadingContextPanel({
       >
         {selection.context}
       </p>
+      <SelectionExplainer
+        key={`ai:${selection.bookId}:${selection.chapterId}:${selection.startOffset}:${selection.endOffset}`}
+        selection={selection}
+      />
       <SelectionAnalyzer
         key={`${selection.bookId}:${selection.chapterId}:${selection.startOffset}:${selection.endOffset}`}
         selection={selection}
@@ -129,6 +136,73 @@ function SelectionAnalyzer({ selection }: { selection: TextSelectionContext }) {
           <p className="text-xs text-muted-foreground">
             Predicciones del modelo: pueden contener errores. No incluyen
             traducción.
+          </p>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function SelectionExplainer({
+  selection,
+}: {
+  selection: TextSelectionContext
+}) {
+  const result = useExplainSelection()
+  const explanation = result.data?.explanation
+  const matches = result.data?.selected_text === selection.text
+  return (
+    <section className="mt-4 border-t pt-4" aria-label="Explicación con IA">
+      <LoadingButton
+        loading={result.isPending}
+        onClick={() => result.mutate(selection)}
+      >
+        Explicar con IA
+      </LoadingButton>
+      {result.isPending && (
+        <p role="status" className="mt-2 text-sm">
+          Preparando explicación…
+        </p>
+      )}
+      {result.isError && (
+        <p role="alert" className="mt-2 text-sm text-destructive">
+          {extractErrorMessage(result.error)}
+        </p>
+      )}
+      {result.data && !matches && (
+        <p role="alert" className="mt-2 text-sm">
+          El texto del capítulo ha cambiado. Vuelve a abrirlo antes de explicar.
+        </p>
+      )}
+      {explanation && matches && (
+        <div className="mt-4 space-y-3 break-words text-sm">
+          <h3 className="font-semibold">Traducción contextual</h3>
+          <p
+            className="text-base font-semibold"
+            data-testid="contextual-translation"
+          >
+            {explanation.contextual_translation}
+          </p>
+          {explanation.meaning_explanation !== null && (
+            <p>{explanation.meaning_explanation}</p>
+          )}
+          {explanation.grammar_explanation !== null && (
+            <div>
+              <h3 className="font-semibold">Gramática</h3>
+              <p>{explanation.grammar_explanation}</p>
+            </div>
+          )}
+          {explanation.sentence_translation !== null && (
+            <div>
+              <h3 className="font-semibold">Traducción de la oración</h3>
+              <p>{explanation.sentence_translation}</p>
+            </div>
+          )}
+          {explanation.uncertainty_note !== null && (
+            <p className="rounded border p-2">{explanation.uncertainty_note}</p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Explicación generada por IA; puede contener errores.
           </p>
         </div>
       )}

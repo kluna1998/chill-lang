@@ -3,8 +3,10 @@ from typing import Literal, Self
 
 from pydantic import (
     EmailStr,
+    Field,
     HttpUrl,
     PostgresDsn,
+    SecretStr,
     computed_field,
     field_validator,
     model_validator,
@@ -15,7 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         # Use top level .env file (one level above ./backend/)
-        env_file="../.env",
+        env_file=("../.env", "../.env.openai.local"),
         env_ignore_empty=True,
         extra="ignore",
     )
@@ -25,6 +27,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     FRONTEND_HOST: str = "http://localhost:5173"
     FASTAPI_ENV: Literal["development"] | None = None
+
+    OPENAI_API_KEY: SecretStr | None = None
+    OPENAI_MODEL: str = Field(default="gpt-5.4-mini", min_length=1)
+    OPENAI_ENABLED: bool = False
+    OPENAI_TIMEOUT_SECONDS: float = Field(default=20, ge=1, le=60)
+    OPENAI_MAX_OUTPUT_TOKENS: int = Field(default=600, ge=100, le=1200)
+    OPENAI_REQUESTS_PER_MINUTE: int = Field(default=6, ge=1, le=30)
 
     PROJECT_NAME: str
     SENTRY_DSN: HttpUrl | None = None

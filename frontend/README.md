@@ -181,3 +181,18 @@ subcomponente está identificado por libro, capítulo y rango: una respuesta tar
 no reemplaza el resultado de otra selección, y cerrar/navegar descarta el análisis.
 Se conservan el contexto original y los controles de lectura. Si la respuesta
 contiene un texto diferente del seleccionado, se pide reabrir el capítulo.
+
+## Explicación contextual (fase 4)
+
+`ReadingContextPanel` añade **Explicar con IA** sin reemplazar **Analizar selección**.
+`useExplainSelection` usa el cliente generado con los mismos identificadores y
+offsets UTF-16, sin enviar texto arbitrario ni anotaciones como fuente de verdad.
+La llamada es explícita, no se reintenta automáticamente y el botón queda
+bloqueado durante la petición. La mutación se descarta al cambiar la selección,
+cerrar el panel o navegar de capítulo; no invalida el análisis spaCy independiente.
+
+La traducción contextual se destaca; significado, gramática, traducción de oración
+e incertidumbre se muestran cuando están disponibles. Los valores se renderizan
+como texto, sin ejecutar HTML. La UI indica que la explicación puede contener errores.
+No se introduce ninguna clave OpenAI en Vite. La activación y evaluación real están
+documentadas en `backend/README.md`; los tests de navegador usan respuestas simuladas.

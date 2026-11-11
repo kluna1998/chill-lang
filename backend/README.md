@@ -336,3 +336,144 @@ El resto comprueba lemas/POS representativos, morfología disponible, texto y
 posiciones exactas, Unicode, ventanas acotadas, anotaciones ausentes y aislamiento
 entre usuarios. La API incluye las versiones del modelo y de spaCy para reproducir
 un resultado. No se persisten los análisis.
+
+## Explicaciones contextuales con OpenAI (fase 4, sin DSPy)
+
+El botón **Explicar con IA** es independiente de **Analizar selección**. No se
+llama a OpenAI al seleccionar texto. El endpoint autenticado
+`POST /api/v1/books/{book_id}/chapters/{chapter_id}/explain` acepta el mismo
+`SelectionAnalysisRequest` con offsets UTF-16. Obtiene el capítulo persistido,
+comprueba propietario y pertenencia y ejecuta `analyze_selection` exactamente una
+vez. No utiliza texto ni anotaciones proporcionados por React. `/analyze` conserva
+su comportamiento.
+
+### Activación deliberada y comprobación del modelo
+
+La integración está **desactivada por defecto**. No se han hecho llamadas reales
+a OpenAI durante la implementación ni los tests. El soporte documentado de
+`OPENAI_MODEL=gpt-5.4-mini` para Responses y Structured Outputs está confirmado en:
+https://developers.openai.com/api/docs/models/gpt-5.4-mini
+El acceso efectivo de tu cuenta y su facturación permanecen sin comprobar hasta
+que hayas terminado su configuración.
+
+1. Configura facturación de API y una clave de proyecto en la plataforma OpenAI.
+2. Copia `.env.openai.local.example` a `.env.openai.local` y añade la clave allí,
+   sin compartirla ni ponerla en variables `VITE_`. El archivo local está ignorado.
+   El `.env` histórico del proyecto sigue versionado: no guardes allí nuevas claves
+   para commitearlas. Añadirlo a `.gitignore` no lo elimina del historial.
+3. Conserva `OPENAI_MODEL=gpt-5.4-mini`. Cuando clave y facturación estén listas,
+   cambia `OPENAI_ENABLED=true` y reinicia el backend. Las variables del proceso
+   prevalecen sobre los archivos; `.env.openai.local` prevalece sobre `.env`.
+4. En Docker Compose usa ambos archivos explícitamente, después de configurarlos:
+
+```console
+docker compose --env-file .env --env-file .env.openai.local up -d backend
+```
+
+Antes de la primera generación de cada worker/modelo, el backend llama a
+`client.models.retrieve(OPENAI_MODEL)` y comprueba que el modelo es accesible.
+Esa petición de metadatos no genera texto. Si falla, no se genera explicación ni
+se sustituye el modelo silenciosamente. La comprobación exitosa se reutiliza por
+proceso; un fallo posterior de permisos del proveedor se sigue gestionando.
+Un modelo distinto debe ser compatible con Responses, salidas estructuradas y
+`reasoning.effort=none`. La disponibilidad de un modelo no confirma saldo de
+facturación: los errores de cuota o presupuesto se notifican por separado.
+
+### Archivos y flujo
+
+- `core/config.py`: `SecretStr` para la clave y límites validados. Modelo,
+  timeout, tokens, frecuencia y activación son configurables.
+- `services/contextual_explanation.py`: cliente oficial `openai==3.49.0`,
+  comprobación de acceso, instrucciones en español, contexto reducido y una sola
+  generación mediante `responses.parse(text_format=ContextualExplanation)`.
+- `models.py`: `ContextualExplanation` prohíbe campos adicionales y valida
+  longitudes y cadenas no vacías. Sus cinco campos están presentes en el esquema;
+  los tres opcionales admiten `null`, en lugar de omitirse. `SelectionExplanation`
+  añade identificadores, rango y selección original para comprobar correspondencia.
+- `api/routes/books.py`: autorización, reutilización de spaCy y adaptación de
+  errores HTTP, sin lógica de prompts dentro de la ruta.
+- `compose.yml`, `pyproject.toml` y `uv.lock`: configuración de despliegue y SDK
+  versionado, sin DSPy, agentes, RAG ni tablas nuevas.
+- Cliente OpenAPI, `useExplainSelection` y `ReadingContextPanel`: petición
+  explícita, botón deshabilitado durante la carga, mensajes de error y traducción
+  contextual destacada. Un componente identificado por libro, capítulo y offsets
+  impide mostrar respuestas tardías sobre otra selección. El análisis spaCy
+  conserva su estado independiente.
+- Tests de servicio/API: proveedor simulado, incluidos transporte HTTP del SDK,
+  esquema estricto, permisos, offsets, configuración, timeout, red y respuestas
+  inválidas. Los tests de navegador simulan también las respuestas del backend.
+
+### Consumo, errores y límites
+
+- Selección: límite existente de 512 unidades UTF-16; ventana spaCy: 4096 caracteres.
+- Solo se envían a OpenAI hasta **1500 caracteres de contexto**, la selección y
+  anotaciones de hasta **32 tokens**. Se marca el contexto o las anotaciones
+  recortadas; nunca se envía el libro completo.
+- `OPENAI_MAX_OUTPUT_TOKENS=600` (configurable entre 100 y 1200).
+- `OPENAI_TIMEOUT_SECONDS=20` (configurable entre 1 y 60).
+- `max_retries=0` en el SDK y `retry:false` en la mutación de React Query. No hay
+  una segunda generación automática para reparar una respuesta.
+- `OPENAI_REQUESTS_PER_MINUTE=6` por usuario y worker (entre 1 y 30). Se rechazan
+  además solicitudes simultáneas del mismo usuario en ese worker. El control local
+  limita memoria y no es un presupuesto global: con cuatro workers puede admitirse
+  hasta cuatro veces el límite configurado; reiniciar los procesos reinicia el contador.
+- Una comprobación de modelo puede preceder a la generación; hay como máximo una
+  petición de generación por explicación admitida. No se pasan herramientas,
+  historial, `conversation` ni `previous_response_id`; se usa `store=False`.
+- La aplicación no registra claves ni cuerpos del libro. Mantén desactivados los
+  logs HTTP/SDK de depuración que puedan registrar mensajes.
+
+Consulta precios y establece alertas y un límite obligatorio de gasto en un
+proyecto separado de OpenAI. Las alertas no detienen peticiones. La aplicación
+no configura automáticamente la facturación ni esos límites y no garantiza un
+tope monetario por usuario. Los límites obligatorios del proveedor pueden tener
+un pequeño retraso de aplicación:
+https://developers.openai.com/api/docs/guides/spend-limits
+
+Tarifas publicadas consultadas para gpt-5.4-mini: $0,75 por millón de tokens de
+entrada y $4,50 de salida. Como ejemplo, 1000 tokens de entrada y 300 de salida
+son aproximadamente $0,00210. El precio real incluye instrucciones, esquema y
+datos enviados, no solo la palabra seleccionada; comprueba las tarifas vigentes.
+
+Se distinguen 422 (selección inválida), 404 (recurso no accesible), 503 (desactivado,
+configuración o modelo sin acceso), 504 (timeout), 429 (frecuencia/cuota/presupuesto)
+y 502 (red, rechazo o respuesta incompleta/incorrecta). Los detalles del proveedor
+se sustituyen por mensajes locales sin credenciales ni cuerpos internos.
+
+### Conceptos
+
+Una API permite que programas intercambien mensajes mediante un contrato. La API
+key es una credencial secreta del backend, no una contraseña que deba recibir React.
+FastAPI valida al lector, obtiene texto local y envía una petición HTTPS al SDK.
+El prompt de sistema contiene las instrucciones de la aplicación; el contenido
+literario se serializa separadamente como datos de usuario no confiables. Esa
+separación reduce riesgos de instrucciones incrustadas, pero no garantiza que el
+modelo siempre responda correctamente.
+
+Los tokens son fragmentos usados para procesar y facturar entrada y salida; no
+son exactamente palabras ni los tokens lingüísticos de spaCy. Una salida
+estructurada sigue un esquema JSON. El SDK lo construye a partir de Pydantic y
+valida el resultado; Pydantic comprueba forma y límites, **no verdad lingüística**.
+spaCy permanece para posiciones, lemas, POS y morfología; sus anotaciones también
+pueden fallar, por lo que el prompt advierte que no son una autoridad infalible.
+La UI distingue explicación generada de análisis local y muestra incertidumbre
+cuando el proveedor la devuelve.
+
+### Evaluación manual, solo después de configurar y activar la API
+
+Estas comprobaciones no se ejecutan como tests automáticos ni se han realizado
+con llamadas reales durante la implementación. Importa un TXT con las frases,
+selecciona cada expresión y pulsa **Explicar con IA**:
+
+| Oración | Selección | Qué comprobar |
+| --- | --- | --- |
+| Elle prépare sa valise. | prépare | Significado de preparar en esa escena |
+| Pour que notre général puisse coucher quelque part. | puisse | Subjuntivo y sentido contextual de pouvoir |
+| Elle aperçut un homme. | aperçut | Pasado simple, sin copiar Tense=Pres erróneo de spaCy |
+| Il a volé un livre. | volé | Robar un libro |
+| L'oiseau a volé. | volé | Volar, frente al ejemplo anterior |
+| Elle se rendit compte de son erreur. | se rendit compte | Locución darse cuenta, no traducción palabra por palabra |
+
+Evalúa brevedad, corrección en español, uso de la oración y honestidad ante
+ambigüedad. La calidad pedagógica de gpt-5.4-mini en estos ejemplos queda pendiente
+de esa evaluación real. No se promete exactitud perfecta.
