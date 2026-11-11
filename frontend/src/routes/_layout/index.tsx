@@ -1,29 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import useAuth from "@/hooks/useAuth"
-
 export const Route = createFileRoute("/_layout/")({
-  component: Dashboard,
-  head: () => ({
-    meta: [
-      {
-        title: "Dashboard - FastAPI Template",
-      },
-    ],
-  }),
+  component: Library,
+  head: () => ({ meta: [{ title: "Mi biblioteca - Chill-Lang" }] }),
 })
 
-function Dashboard() {
-  const { user: currentUser } = useAuth()
-
+function Library() {
   return (
-    <div>
-      <div>
-        <h1 className="text-2xl truncate max-w-sm">
-          Hi, {currentUser?.full_name || currentUser?.email} 👋
-        </h1>
-        <p className="text-muted-foreground">
-          Welcome back, nice to see you again!!!
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold tracking-tight">Mi biblioteca</h1>
+      <div className="rounded-lg border p-8 text-center">
+        <h2 className="text-lg font-semibold">Todavía no tienes libros</h2>
+        <p className="mt-2 text-muted-foreground">
+          Pronto podrás importar libros en francés y empezar a leer.
         </p>
       </div>
     </div>

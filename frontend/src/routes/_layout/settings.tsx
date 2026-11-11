@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_layout/settings")({
   head: () => ({
     meta: [
       {
-        title: "Settings - FastAPI Template",
+        title: "Mi cuenta - Chill-Lang",
       },
     ],
   }),
@@ -36,7 +36,7 @@ function UserSettings() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">User Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Mi cuenta</h1>
         <p className="text-muted-foreground">
           Manage your account settings and preferences
         </p>
