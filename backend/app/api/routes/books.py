@@ -190,12 +190,15 @@ def read_chapters(
     chapters = session.exec(
         select(Chapter.id, Chapter.book_id, Chapter.title, Chapter.position)
         .where(Chapter.book_id == book_id)
-        .order_by(Chapter.position, Chapter.id)
+        .order_by(col(Chapter.position), col(Chapter.id))
         .offset(skip)
         .limit(limit)
     ).all()
     return ChaptersPublic(
-        data=[ChapterSummary.model_validate(chapter._mapping) for chapter in chapters],
+        data=[
+            ChapterSummary(id=id_, book_id=book_id_, title=title, position=position)
+            for id_, book_id_, title, position in chapters
+        ],
         count=count,
     )
 

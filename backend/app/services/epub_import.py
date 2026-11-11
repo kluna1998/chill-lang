@@ -6,10 +6,13 @@ import re
 import zipfile
 import zlib
 from html.entities import name2codepoint
+from typing import Any
 from urllib.parse import unquote, urlsplit
 
 from ebooklib import epub
-from lxml import etree
+
+# The installed lxml C extension has no type stubs; keep this exception local.
+from lxml import etree  # type: ignore[import-untyped]  # ty: ignore[unresolved-import]
 from pydantic import ValidationError
 
 from app.models import BookCreate, ChapterCreate
@@ -186,7 +189,7 @@ def _text(node: etree._Element) -> str:
     return re.sub(r"\s+", " ", "".join(node.itertext())).strip()
 
 
-def _toc(entries: list, result: dict[tuple[str, str], str]) -> None:
+def _toc(entries: list[Any], result: dict[tuple[str, str], str]) -> None:
     for entry in entries:
         if isinstance(entry, tuple):
             _toc([entry[0]], result)
@@ -322,7 +325,10 @@ def parse_epub_book(data: bytes) -> ParsedBook:
             visited.add(name)
             if not isinstance(item, epub.EpubHtml):
                 continue
-            root = _xml(item.content)
+            content = item.content
+            if isinstance(content, str):
+                content = content.encode("utf-8")
+            root = _xml(content)
             document_title = root.find(".//{*}title")
             fallback = (
                 _text(document_title) if document_title is not None else ""

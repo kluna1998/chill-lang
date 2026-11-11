@@ -1,6 +1,7 @@
 """French analysis of a bounded window from persisted chapter text."""
 
 import uuid
+from importlib.metadata import version
 from threading import Lock
 
 import spacy
@@ -153,5 +154,5 @@ def analyze_selection(
         ),
         model_name=MODEL_NAME,
         model_version=pipeline.meta["version"],
-        spacy_version=spacy.__version__,
+        spacy_version=version("spacy"),
     )

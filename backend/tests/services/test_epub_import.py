@@ -3,9 +3,27 @@ import zipfile
 
 import pytest
 
+from app.services import epub_import
 from app.services.book_import import BookImportError
 from app.services.epub_import import parse_epub_book
 from tests.utils.epub import make_epub, xhtml
+
+
+def test_ebooklib_string_content_preserves_unicode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_read = epub_import.epub.read_epub
+
+    def read_with_string_content(*args, **kwargs):
+        book = original_read(*args, **kwargs)
+        for item in book.get_items():
+            if isinstance(item, epub_import.epub.EpubHtml):
+                item.content = item.content.decode("utf-8")
+        return book
+
+    monkeypatch.setattr(epub_import.epub, "read_epub", read_with_string_content)
+    parsed = parse_epub_book(make_epub())
+    assert "Camille se réveille." in parsed.chapters[0].content
 
 
 def test_metadata_spine_paragraphs_and_dialogue() -> None:

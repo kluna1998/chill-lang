@@ -1,4 +1,6 @@
+import { readFile } from "node:fs/promises"
 import { expect, type Page, test } from "@playwright/test"
+import { transformWithOxc } from "vite"
 
 const bookId = "00000000-0000-4000-8000-000000000010"
 const chapterId = "00000000-0000-4000-8000-000000000020"
@@ -8,7 +10,24 @@ const content =
 const path = `/books/${bookId}/chapters/${chapterId}`
 
 test.use({ storageState: { cookies: [], origins: [] } })
+let selectionModuleCode: string
+test.beforeAll(async () => {
+  const source = new URL(
+    "../src/components/Reader/selection.ts",
+    import.meta.url,
+  )
+  // Keep the DOM unit tests on the real source, including against a built frontend.
+  selectionModuleCode = (
+    await transformWithOxc(await readFile(source, "utf8"), source.pathname)
+  ).code
+})
 test.beforeEach(async ({ page }) => {
+  await page.route("**/src/components/Reader/selection.ts", (route) =>
+    route.fulfill({
+      contentType: "text/javascript",
+      body: selectionModuleCode,
+    }),
+  )
   await page.addInitScript(() =>
     localStorage.setItem("access_token", "test-token"),
   )

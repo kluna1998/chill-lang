@@ -15,7 +15,10 @@ export function Logo({
 }: LogoProps) {
   const content = (
     <span
-      className={cn("inline-flex items-center text-xl font-semibold", className)}
+      className={cn(
+        "inline-flex items-center text-xl font-semibold",
+        className,
+      )}
     >
       <span
         className={cn(

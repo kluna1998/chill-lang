@@ -1,88 +1,237 @@
-# Full Stack FastAPI Template
+# Chill-Lang
 
-[![Test Docker Compose](../../actions/workflows/test-docker-compose.yml/badge.svg)](../../actions/workflows/test-docker-compose.yml)
-[![Test Backend](../../actions/workflows/test-backend.yml/badge.svg)](../../actions/workflows/test-backend.yml)
+Chill-Lang es un MVP para leer libros en francés con ayuda contextual en español.
+Cada usuario tiene una biblioteca privada, vocabulario personal y progreso de lectura.
 
-## Technology Stack and Features
+## Funcionalidades
 
-- ⚡ [**FastAPI**](https://fastapi.tiangolo.com) for the Python backend API.
-  - 🧰 [SQLModel](https://sqlmodel.tiangolo.com) for the Python SQL database interactions (ORM).
-  - 🔍 [Pydantic](https://docs.pydantic.dev), used by FastAPI, for the data validation and settings management.
-  - 💾 [PostgreSQL](https://www.postgresql.org) as the SQL database.
-- 🚀 [React](https://react.dev) for the frontend.
-  - 🧩 Built into the backend application and served by FastAPI on the same domain as the API.
-  - 💃 Using TypeScript, hooks, [Vite](https://vitejs.dev), and other parts of a modern frontend stack.
-  - 🎨 [Tailwind CSS](https://tailwindcss.com) and [shadcn/ui](https://ui.shadcn.com) for the frontend components.
-  - 🤖 An automatically generated frontend client.
-  - 🧪 [Playwright](https://playwright.dev) for end-to-end testing.
-  - 🦇 Dark mode support.
-- ☁️ [FastAPI Cloud](https://fastapicloud.com) for deployment.
-- 🐋 [Docker Compose](https://www.docker.com) for local services and self-hosted deployment.
-  - 📞 [Traefik](https://traefik.io) as a reverse proxy with automatic HTTPS.
-- 🔒 Secure password hashing by default.
-- 🔑 JWT (JSON Web Token) authentication.
-- 📫 Email-based password recovery.
-- ✉️ [React Email](https://react.email) for email templates.
-- 📬 [Mailpit](https://mailpit.axllent.org) for local email testing during development.
-- ✅ Tests with [Pytest](https://pytest.org).
-- 🏭 CI (continuous integration) and CD (continuous deployment) based on GitHub Actions.
+- Registro, inicio/cierre de sesión, cuenta personal y administración de usuarios.
+- Importación de libros TXT y EPUB a metadatos y capítulos de texto plano.
+- Índice de capítulos, navegación anterior/siguiente y preferencias de lectura.
+- Selección de palabras o expresiones conservando texto, contexto y offsets UTF-16.
+- Análisis de lemas, categorías y morfología con spaCy y `fr_core_news_sm`.
+- Traducción contextual con OpenAI, solicitada expresamente por el lector.
+  Las explicaciones son opcionales y se muestran cuando aportan valor pedagógico.
+- Guardado de vocabulario reutilizando la traducción ya obtenida, sin otra llamada
+  a la IA; listado paginado y eliminación de entradas propias.
+- Progreso por usuario y libro, recuperación de posición y «Continuar leyendo».
+  Utiliza offsets del texto, debounce, huella del contenido y control de versiones.
 
-### Dashboard Login
+La importación no conserva el archivo original ni reproduce la maquetación de EPUB.
+No incluye OCR, PDF, flashcards, SRS, gamificación, diccionarios ni orquestadores.
+El backend de demostración de Items permanece por compatibilidad, fuera de la interfaz.
 
-![Dashboard login screenshot](img/login.png)
+## Arquitectura y requisitos
 
-### Dashboard - Admin
+Monolito modular: FastAPI, SQLModel, Pydantic, PostgreSQL y Alembic en el backend;
+React, TypeScript, TanStack Router y React Query en el frontend. El cliente API se
+obtiene de OpenAPI. La lógica de importación, NLP, IA y persistencia está en
+`backend/app/services/`. El MVP utiliza el SDK oficial de OpenAI directamente;
+DSPy está pospuesto.
 
-![Admin dashboard screenshot](img/dashboard.png)
+Para Docker necesitas Docker Engine y Compose v2. La imagen construye también el
+frontend, que FastAPI sirve en el mismo origen que la API.
 
-### Dashboard - Items
+Para desarrollar y ejecutar las pruebas fuera de Docker necesitas Python 3.14,
+`uv`, Bun 1 y Node.js compatible con Vite 8 (22.12 o posterior). Para los E2E
+necesitas además Chromium de Playwright y sus bibliotecas del sistema. Las versiones
+Python y JavaScript están fijadas en `uv.lock` y `bun.lock`.
 
-![Items dashboard screenshot](img/dashboard-items.png)
+## Configuración inicial
 
-### Dashboard - Dark Mode
+En un clon nuevo, desde la raíz:
 
-![Dark mode dashboard screenshot](img/dashboard-dark.png)
+```bash
+cp .env.example .env
+cp .env.openai.local.example .env.openai.local
+```
 
-### React Email Templates
+Si esos archivos ya existen, edítalos sin sobrescribirlos. Configura en `.env`
+`PROJECT_NAME`, `SECRET_KEY`, `FIRST_SUPERUSER`, `FIRST_SUPERUSER_PASSWORD`,
+`POSTGRES_PASSWORD` y `DATABASE_URL`. Utiliza secretos propios en lugar de
+`changethis`. En desarrollo local, PostgreSQL se publica en `localhost:5432` y
+Mailpit en los puertos SMTP 1025 y web 8025.
 
-![Email templates screenshot](img/react-email.png)
+Reserva `.env.openai.local`, ignorado por Git, para la clave de OpenAI. El `.env`
+histórico del proyecto sigue versionado: no guardes allí esa clave ni la expongas
+mediante variables `VITE_`. Los archivos de ejemplo no contienen credenciales reales.
 
-### Mailpit - Local Email Testing
+### Ejecutar con Docker Compose
 
-![Mailpit screenshot](img/mailpit.png)
+Desde la raíz, después de configurar los archivos:
 
-### Interactive API Documentation
+```bash
+docker compose --env-file .env --env-file .env.openai.local up -d db mailpit
+docker compose --env-file .env --env-file .env.openai.local build backend
+docker compose --env-file .env --env-file .env.openai.local run --rm backend bash scripts/prestart.sh
+docker compose --env-file .env --env-file .env.openai.local up -d backend
+```
 
-![API docs](img/docs.png)
+`prestart.sh` aplica Alembic y crea el administrador inicial si no existe. El
+arranque habitual del backend no ejecuta ese script automáticamente.
 
-## How to Use It
+- Aplicación y API: <http://localhost:8000>
+- Documentación interactiva: <http://localhost:8000/docs>
+- Mailpit: <http://localhost:8025>
 
-Click the **Use this template** button at the top of this page to create a new repository.
+Después de cambiar código que se copia a la imagen, reconstruye el backend. Para
+comprobar y aplicar nuevas migraciones:
 
-## Backend Development
+```bash
+docker compose exec backend alembic heads
+docker compose exec backend alembic upgrade head
+docker compose exec backend alembic current
+```
 
-Backend docs: [backend/README.md](./backend/README.md).
+No es necesario eliminar volúmenes para actualizar el esquema.
 
-## Frontend Development
+### Desarrollo local con recarga
 
-Frontend docs: [frontend/README.md](./frontend/README.md).
+Desde la raíz:
 
-## Deployment
+```bash
+uv sync --frozen --package app
+bun install --frozen-lockfile
+docker compose up -d db mailpit
+cd backend
+uv run --frozen bash scripts/prestart.sh
+uv run --frozen fastapi dev --host 127.0.0.1
+```
 
-FastAPI Cloud deployment: [deployment.md](./deployment.md).
+En otra terminal:
 
-Self-hosted deployment with Docker Compose: [deployment-docker-compose.md](./deployment-docker-compose.md).
+```bash
+cd frontend
+VITE_API_URL=http://localhost:8000 bun run dev
+```
 
-## Development
+Abre <http://localhost:5173>. Ejecuta los comandos del backend desde `backend/`,
+porque la configuración carga `../.env` y después `../.env.openai.local`. Las
+variables del proceso tienen prioridad sobre ambos archivos.
 
-General development docs: [development.md](./development.md).
+## Importar y leer
 
-This includes the local FastAPI and Vite workflow, Docker Compose services, `.env` configuration, and more.
+El TXT debe estar codificado en UTF-8 y seguir este formato (máximo 5 MiB):
 
-## Release Notes
+```text
+TITLE: Une aventure
+AUTHOR: Une autrice
 
-Check the file [release-notes.md](./release-notes.md).
+=== CHAPTER: Le départ ===
+Après un repos, on est remontés à cheval.
 
-## License
+=== CHAPTER: La rencontre ===
+La maison était grande.
+```
 
-The Full Stack FastAPI Template is licensed under the terms of the MIT license.
+`AUTHOR` es opcional. Los EPUB tienen un límite de 20 MiB y controles de tamaño
+expandido, rutas y entidades XML. Se extraen capítulos siguiendo el spine; las
+portadas y la navegación no se convierten en capítulos de lectura. Un error de
+persistencia revierte el libro y todos sus capítulos.
+
+En el lector, selecciona texto para analizarlo o solicitar su traducción. Después
+de obtenerla puedes pulsar «Guardar palabra». El contexto se verifica contra el
+capítulo persistido y los dobles clics no crean entradas duplicadas para el mismo
+rango. Eliminar un libro, capítulo o cuenta elimina por cascada sus datos asociados.
+
+## Activar OpenAI de forma deliberada
+
+La IA está desactivada por defecto; importar, leer y analizar con spaCy no requieren
+una clave. Cuando tengas configuradas la clave y la facturación de API, establece
+en `.env.openai.local`:
+
+```dotenv
+OPENAI_API_KEY=tu-clave-de-proyecto
+OPENAI_MODEL=gpt-5.4-mini
+OPENAI_ENABLED=true
+OPENAI_TIMEOUT_SECONDS=20
+OPENAI_MAX_OUTPUT_TOKENS=600
+OPENAI_REQUESTS_PER_MINUTE=6
+```
+
+Reinicia el backend; con Compose utiliza ambos `--env-file` al recrearlo. El backend
+comprueba el acceso al modelo antes de la primera generación de cada worker y
+valida la respuesta con Pydantic. No sustituye silenciosamente un modelo sin acceso.
+Hay un único intento por petición, contexto limitado y control de frecuencia por
+usuario y worker. Estos controles no equivalen a un presupuesto monetario global;
+configura también los límites del proyecto en el proveedor.
+
+Las pruebas automatizadas simulan OpenAI: no acreditan acceso de una cuenta,
+facturación ni calidad pedagógica real. Las predicciones de spaCy y las respuestas
+de IA pueden contener errores.
+
+## Verificación
+
+### Backend
+
+**Utiliza una base exclusiva de pruebas.** La limpieza de `tests/conftest.py`
+elimina usuarios; no ejecutes la suite contra tu biblioteca de desarrollo.
+Ejemplo con el PostgreSQL de Compose, desde la raíz:
+
+```bash
+docker compose exec db createdb -U postgres chill_lang_test
+cd backend
+export DATABASE_URL='postgresql://postgres:TU_PASSWORD@localhost:5432/chill_lang_test'
+export OPENAI_ENABLED=false
+uv run --frozen alembic upgrade head
+uv run --frozen pytest tests -q
+uv run --frozen mypy app
+uv run --frozen ty check app
+uv run --frozen ruff check app tests
+uv run --frozen ruff format app tests --check
+```
+
+Sustituye `TU_PASSWORD` por la contraseña configurada. Al terminar, cierra esa
+terminal o elimina la variable `DATABASE_URL` antes de volver a usar tu base habitual.
+Puedes borrar la base de pruebas desde la raíz:
+
+```bash
+docker compose exec db dropdb -U postgres chill_lang_test
+```
+
+Las pruebas de rollback interceptan la sesión real de la petición y comprueban
+que un fallo de commit o una restricción de PostgreSQL no dejan datos parciales.
+La suite también conserva casos `xfail` de limitaciones conocidas del modelo NLP;
+no se consideran pruebas de exactitud lingüística superadas.
+
+### Frontend y E2E
+
+Desde `frontend/`:
+
+```bash
+VITE_API_URL= bun run build
+bunx tsc --noEmit -p tsconfig.json
+bunx biome check src tests
+```
+
+La compilación anterior usa API relativa al mismo origen. `VITE_API_URL` se fija
+al compilar: cambiar solo las variables de Playwright no cambia un bundle ya
+generado. Para Vite en desarrollo usa la URL explícita indicada más arriba.
+
+Con una instancia de pruebas del backend ya migrada, su frontend compilado, un
+administrador inicial y Mailpit disponibles, ejecuta:
+
+```bash
+PLAYWRIGHT_BASE_URL=http://localhost:8000 \
+VITE_API_URL=http://localhost:8000 \
+MAILPIT_HOST=http://localhost:8025 \
+bun run test --workers=1
+```
+
+Esa instancia debe apuntar también a una base de pruebas y tener OpenAI desactivado.
+Los E2E crean usuarios y cambian datos. Las credenciales `FIRST_SUPERUSER` y
+`FIRST_SUPERUSER_PASSWORD` deben coincidir con las de esa instancia. Los helpers de
+creación de usuarios requieren `FASTAPI_ENV=development`.
+
+Hay pruebas de interfaz con APIs simuladas para carga, errores, permisos y
+respuestas tardías. `mvp-integration.spec.ts` utiliza API, PostgreSQL y spaCy reales;
+solo intercepta la explicación de IA. Las pruebas de rangos DOM cargan el mismo
+`selection.ts` transpilado por Vite mediante una ruta interceptada exclusivamente
+en el test, conservando sus aserciones también con el frontend compilado.
+La prueba backend de integración recorre
+TXT y EPUB y simula únicamente el proveedor OpenAI.
+
+Más detalles: [backend](backend/README.md), [frontend](frontend/README.md) y
+[desarrollo](development.md).
+
+Basado en Full Stack FastAPI Template. Licencia MIT; consulta [LICENSE](LICENSE).

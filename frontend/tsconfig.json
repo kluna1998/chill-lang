@@ -19,7 +19,8 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["node"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "/src/*": ["./src/*"]
     }
   },
   "include": ["src", "tests", "playwright.config.ts"],
