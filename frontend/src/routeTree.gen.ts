@@ -18,6 +18,7 @@ import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutItemsRouteImport } from './routes/_layout/items'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutVocabularyRouteImport } from './routes/_layout/vocabulary'
 import { Route as LayoutBooksBookIdIndexRouteImport } from './routes/_layout/books/$bookId/index'
 import { Route as LayoutBooksBookIdChaptersChapterIdRouteImport } from './routes/_layout/books/$bookId/chapters/$chapterId'
 
@@ -65,6 +66,11 @@ const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutVocabularyRoute = LayoutVocabularyRouteImport.update({
+  id: '/vocabulary',
+  path: '/vocabulary',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutBooksBookIdIndexRoute = LayoutBooksBookIdIndexRouteImport.update({
   id: '/books/$bookId/',
   path: '/books/$bookId/',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof LayoutAdminRoute
   '/items': typeof LayoutItemsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/vocabulary': typeof LayoutVocabularyRoute
   '/books/$bookId/': typeof LayoutBooksBookIdIndexRoute
   '/books/$bookId/chapters/$chapterId': typeof LayoutBooksBookIdChaptersChapterIdRoute
 }
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/admin': typeof LayoutAdminRoute
   '/items': typeof LayoutItemsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/vocabulary': typeof LayoutVocabularyRoute
   '/': typeof LayoutIndexRoute
   '/books/$bookId': typeof LayoutBooksBookIdIndexRoute
   '/books/$bookId/chapters/$chapterId': typeof LayoutBooksBookIdChaptersChapterIdRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/_layout/admin': typeof LayoutAdminRoute
   '/_layout/items': typeof LayoutItemsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
+  '/_layout/vocabulary': typeof LayoutVocabularyRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/books/$bookId/': typeof LayoutBooksBookIdIndexRoute
   '/_layout/books/$bookId/chapters/$chapterId': typeof LayoutBooksBookIdChaptersChapterIdRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/items'
     | '/settings'
+    | '/vocabulary'
     | '/books/$bookId/'
     | '/books/$bookId/chapters/$chapterId'
   fileRoutesByTo: FileRoutesByTo
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/items'
     | '/settings'
+    | '/vocabulary'
     | '/'
     | '/books/$bookId'
     | '/books/$bookId/chapters/$chapterId'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/_layout/admin'
     | '/_layout/items'
     | '/_layout/settings'
+    | '/_layout/vocabulary'
     | '/_layout/'
     | '/_layout/books/$bookId/'
     | '/_layout/books/$bookId/chapters/$chapterId'
@@ -228,6 +240,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/vocabulary': {
+      id: '/_layout/vocabulary'
+      path: '/vocabulary'
+      fullPath: '/vocabulary'
+      preLoaderRoute: typeof LayoutVocabularyRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/books/$bookId/': {
       id: '/_layout/books/$bookId/'
       path: '/books/$bookId'
@@ -249,6 +268,7 @@ interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
   LayoutItemsRoute: typeof LayoutItemsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
+  LayoutVocabularyRoute: typeof LayoutVocabularyRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutBooksBookIdIndexRoute: typeof LayoutBooksBookIdIndexRoute
   LayoutBooksBookIdChaptersChapterIdRoute: typeof LayoutBooksBookIdChaptersChapterIdRoute
@@ -258,6 +278,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
   LayoutItemsRoute: LayoutItemsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
+  LayoutVocabularyRoute: LayoutVocabularyRoute,
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutBooksBookIdIndexRoute: LayoutBooksBookIdIndexRoute,
   LayoutBooksBookIdChaptersChapterIdRoute:

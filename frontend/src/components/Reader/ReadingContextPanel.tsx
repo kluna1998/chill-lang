@@ -5,6 +5,7 @@ import {
   useAnalyzeSelection,
   useExplainSelection,
 } from "@/hooks/useBookQueries"
+import { useSaveVocabulary } from "@/hooks/useReadingState"
 import { extractErrorMessage } from "@/utils"
 import type { TextSelectionContext } from "./selection"
 
@@ -149,6 +150,7 @@ function SelectionExplainer({
   selection: TextSelectionContext
 }) {
   const result = useExplainSelection()
+  const save = useSaveVocabulary()
   const explanation = result.data?.explanation
   const matches = result.data?.selected_text === selection.text
   return (
@@ -204,6 +206,28 @@ function SelectionExplainer({
           <p className="text-xs text-muted-foreground">
             Explicación generada por IA; puede contener errores.
           </p>
+          <LoadingButton
+            loading={save.isPending}
+            disabled={save.isSuccess}
+            onClick={() =>
+              save.mutate({
+                chapter_id: selection.chapterId,
+                original_text: selection.text,
+                contextual_translation: explanation.contextual_translation,
+                context: selection.context,
+                start_offset: selection.startOffset,
+                end_offset: selection.endOffset,
+                context_start_offset: selection.contextStartOffset,
+                context_end_offset: selection.contextEndOffset,
+                offset_unit: "utf-16",
+              })
+            }
+          >
+            {save.isSuccess ? "Palabra guardada" : "Guardar palabra"}
+          </LoadingButton>
+          {save.isError && (
+            <p role="alert">{extractErrorMessage(save.error)}</p>
+          )}
         </div>
       )}
     </section>

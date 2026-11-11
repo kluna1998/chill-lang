@@ -441,6 +441,66 @@ export type PrivateUserCreate = {
 };
 
 /**
+ * ReadingProgressPublic
+ */
+export type ReadingProgressPublic = {
+    /**
+     * Book Id
+     */
+    book_id: string;
+    /**
+     * Chapter Id
+     */
+    chapter_id: string;
+    /**
+     * Position
+     */
+    position: number;
+    /**
+     * Content Hash
+     */
+    content_hash: string;
+    /**
+     * Version
+     */
+    version: number;
+    /**
+     * Offset Unit
+     */
+    offset_unit?: 'utf-16';
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * ReadingProgressUpdate
+ */
+export type ReadingProgressUpdate = {
+    /**
+     * Chapter Id
+     */
+    chapter_id: string;
+    /**
+     * Position
+     */
+    position: number;
+    /**
+     * Content Hash
+     */
+    content_hash: string;
+    /**
+     * Expected Version
+     */
+    expected_version: number;
+    /**
+     * Offset Unit
+     */
+    offset_unit?: 'utf-16';
+};
+
+/**
  * SelectionAnalysis
  */
 export type SelectionAnalysis = {
@@ -741,6 +801,120 @@ export type ValidationError = {
     ctx?: {
         [key: string]: unknown;
     };
+};
+
+/**
+ * VocabularyCreate
+ */
+export type VocabularyCreate = {
+    /**
+     * Chapter Id
+     */
+    chapter_id: string;
+    /**
+     * Start Offset
+     */
+    start_offset: number;
+    /**
+     * End Offset
+     */
+    end_offset: number;
+    /**
+     * Original Text
+     */
+    original_text: string;
+    /**
+     * Contextual Translation
+     */
+    contextual_translation: string;
+    /**
+     * Context
+     */
+    context: string;
+    /**
+     * Context Start Offset
+     */
+    context_start_offset: number;
+    /**
+     * Context End Offset
+     */
+    context_end_offset: number;
+    /**
+     * Offset Unit
+     */
+    offset_unit?: 'utf-16';
+};
+
+/**
+ * VocabularyPublic
+ */
+export type VocabularyPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Owner Id
+     */
+    owner_id: string;
+    /**
+     * Book Id
+     */
+    book_id: string;
+    /**
+     * Chapter Id
+     */
+    chapter_id: string;
+    /**
+     * Original Text
+     */
+    original_text: string;
+    /**
+     * Contextual Translation
+     */
+    contextual_translation: string;
+    /**
+     * Context
+     */
+    context: string;
+    /**
+     * Start Offset
+     */
+    start_offset: number;
+    /**
+     * End Offset
+     */
+    end_offset: number;
+    /**
+     * Context Start Offset
+     */
+    context_start_offset: number;
+    /**
+     * Context End Offset
+     */
+    context_end_offset: number;
+    /**
+     * Offset Unit
+     */
+    offset_unit?: 'utf-16';
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * VocabularyPublicList
+ */
+export type VocabularyPublicList = {
+    /**
+     * Data
+     */
+    data: Array<VocabularyPublic>;
+    /**
+     * Count
+     */
+    count: number;
 };
 
 export type loginLoginAccessTokenData = {
@@ -1759,6 +1933,157 @@ export type booksExplainChapterSelectionResponses = {
 };
 
 export type booksExplainChapterSelectionResponse = booksExplainChapterSelectionResponses[keyof booksExplainChapterSelectionResponses];
+
+export type readingListVocabularyData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/vocabulary/';
+};
+
+export type readingListVocabularyErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type readingListVocabularyError = readingListVocabularyErrors[keyof readingListVocabularyErrors];
+
+export type readingListVocabularyResponses = {
+    /**
+     * Successful Response
+     */
+    200: VocabularyPublicList;
+};
+
+export type readingListVocabularyResponse = readingListVocabularyResponses[keyof readingListVocabularyResponses];
+
+export type readingSaveVocabularyData = {
+    body: VocabularyCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/vocabulary/';
+};
+
+export type readingSaveVocabularyErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type readingSaveVocabularyError = readingSaveVocabularyErrors[keyof readingSaveVocabularyErrors];
+
+export type readingSaveVocabularyResponses = {
+    /**
+     * Successful Response
+     */
+    200: VocabularyPublic;
+};
+
+export type readingSaveVocabularyResponse = readingSaveVocabularyResponses[keyof readingSaveVocabularyResponses];
+
+export type readingDeleteVocabularyData = {
+    body?: never;
+    path: {
+        /**
+         * Entry Id
+         */
+        entry_id: string;
+    };
+    query?: never;
+    url: '/api/v1/vocabulary/{entry_id}';
+};
+
+export type readingDeleteVocabularyErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type readingDeleteVocabularyError = readingDeleteVocabularyErrors[keyof readingDeleteVocabularyErrors];
+
+export type readingDeleteVocabularyResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type readingDeleteVocabularyResponse = readingDeleteVocabularyResponses[keyof readingDeleteVocabularyResponses];
+
+export type readingGetProgressData = {
+    body?: never;
+    path: {
+        /**
+         * Book Id
+         */
+        book_id: string;
+    };
+    query?: never;
+    url: '/api/v1/books/{book_id}/progress';
+};
+
+export type readingGetProgressErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type readingGetProgressError = readingGetProgressErrors[keyof readingGetProgressErrors];
+
+export type readingGetProgressResponses = {
+    /**
+     * Response Reading-Get Progress
+     *
+     * Successful Response
+     */
+    200: ReadingProgressPublic | null;
+};
+
+export type readingGetProgressResponse = readingGetProgressResponses[keyof readingGetProgressResponses];
+
+export type readingSaveProgressData = {
+    body: ReadingProgressUpdate;
+    path: {
+        /**
+         * Book Id
+         */
+        book_id: string;
+    };
+    query?: never;
+    url: '/api/v1/books/{book_id}/progress';
+};
+
+export type readingSaveProgressErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type readingSaveProgressError = readingSaveProgressErrors[keyof readingSaveProgressErrors];
+
+export type readingSaveProgressResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReadingProgressPublic;
+};
+
+export type readingSaveProgressResponse = readingSaveProgressResponses[keyof readingSaveProgressResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;

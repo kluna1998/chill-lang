@@ -1,8 +1,9 @@
-"""Atomic persistence shared by the TXT and EPUB import endpoints."""
+"""Book persistence and shared ownership checks for books and chapters."""
 
 import uuid
 
-from sqlmodel import Session
+from fastapi import HTTPException
+from sqlmodel import Session, select
 
 from app.models import Book, BookPublic, Chapter
 from app.services.book_import import ParsedBook
@@ -25,3 +26,23 @@ def persist_imported_book(
     except Exception:
         session.rollback()
         raise
+
+
+def get_owned_book(session: Session, book_id: uuid.UUID, owner_id: uuid.UUID) -> Book:
+    statement = select(Book).where(Book.id == book_id, Book.owner_id == owner_id)
+    book = session.exec(statement).first()
+    if book is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return book
+
+
+def get_owned_chapter(
+    session: Session, book_id: uuid.UUID, chapter_id: uuid.UUID, owner_id: uuid.UUID
+) -> Chapter:
+    get_owned_book(session, book_id, owner_id)
+    chapter = session.exec(
+        select(Chapter).where(Chapter.id == chapter_id, Chapter.book_id == book_id)
+    ).first()
+    if chapter is None:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    return chapter

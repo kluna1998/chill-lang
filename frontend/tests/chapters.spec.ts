@@ -45,6 +45,7 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/v1/books/**", (route) => {
     expect(route.request().headers().authorization).toBe("Bearer test-token")
     const path = new URL(route.request().url()).pathname
+    if (path.endsWith("/progress")) return route.fulfill({ json: null })
     if (path === "/api/v1/books/")
       return route.fulfill({ json: { data: [book], count: 1 } })
     if (path === `/api/v1/books/${bookId}`) return route.fulfill({ json: book })

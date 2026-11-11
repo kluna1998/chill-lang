@@ -440,6 +440,55 @@ configuración o modelo sin acceso), 504 (timeout), 429 (frecuencia/cuota/presup
 y 502 (red, rechazo o respuesta incompleta/incorrecta). Los detalles del proveedor
 se sustituyen por mensajes locales sin credenciales ni cuerpos internos.
 
+### Fase 5: vocabulario y progreso
+
+`services/reading_state.py` concentra la persistencia. Las rutas autenticadas de
+`api/routes/reading_state.py` delegan en ese servicio y el frontend utiliza el
+cliente OpenAPI generado, con cachés de React Query separadas por usuario.
+Cerrar sesión vacía la caché para proteger los datos al cambiar de cuenta.
+
+- `POST /api/v1/vocabulary/`: recibe la traducción ya visible de la Fase 4 y el
+  rango seleccionado. El servidor comprueba propietario, texto, contexto y límites UTF-16,
+  y obtiene el contexto directamente del capítulo persistido. No llama a OpenAI
+  ni vuelve a analizar el texto con spaCy.
+- `GET /api/v1/vocabulary/?skip=0&limit=20`: lista únicamente las entradas del
+  usuario, con un máximo de 100 por petición. `DELETE /api/v1/vocabulary/{id}`
+  elimina una entrada propia; recursos privados e inexistentes devuelven 404.
+- La restricción única `(owner_id, chapter_id, start_offset, end_offset)` hace
+  idempotentes los reintentos y los dobles clics concurrentes. Devuelven la
+  instantánea existente sin cambiar su traducción ni su fecha de guardado.
+- `GET /api/v1/books/{book_id}/progress` devuelve el progreso o `null`.
+  `PUT` recibe capítulo, posición UTF-16, SHA-256 del contenido y
+  `expected_version` (0 al crear). Una actualización solo se acepta si la versión
+  coincide; una petición antigua recibe 409 y no sobrescribe datos válidos.
+
+La posición corresponde al primer carácter visible bajo la cabecera del lector,
+no a píxeles ni a un porcentaje dependiente de la tipografía. Al abrir el capítulo
+se espera una lectura fresca del progreso, se comprueba la huella del contenido y
+se restaura una sola vez. «Continuar leyendo» abre el último capítulo guardado.
+No se escribe por montar la pantalla, restaurar el scroll ni recibir una respuesta.
+El primer guardado requiere desplazamiento o interacción deliberada en el texto
+(también permite registrar capítulos cortos sin scroll). Los cambios se agrupan
+con 900 ms de debounce y las peticiones se serializan; una respuesta antigua no
+puede rebajar la versión de la caché. Se intenta vaciar el cambio pendiente al
+cambiar de ruta o al ocultar la pestaña.
+
+Si cambia el contenido, no se adivina una posición ni se destruye el progreso
+anterior. Los conflictos y errores de guardado se muestran en el lector; recargar
+permite recuperar la versión vigente. Un cierre abrupto antes de terminar el
+guardado puede perder el último desplazamiento. La traducción guardada es una
+instantánea proporcionada por el lector, validada como texto, no una certificación
+de exactitud lingüística. Editar un capítulo conserva las instantáneas; eliminar
+el capítulo, el libro o la cuenta elimina sus entradas y progreso por cascada,
+siguiendo las relaciones existentes.
+
+La migración `020a2ca57aba`, posterior a `8c7ab0c90d05`, añade solamente
+`vocabularyentry` y `readingprogress`, sus claves foráneas, índices y restricciones
+únicas. `tests/api/routes/test_reading_state.py` cubre persistencia, permisos,
+Unicode, duplicados, contenido editado y conflictos. Las pruebas de navegador de
+`frontend/tests/reading-state.spec.ts` cubren guardar/eliminar vocabulario,
+paginación, recuperación, debounce y respuestas tardías con APIs simuladas.
+
 ### Conceptos
 
 Una API permite que programas intercambien mensajes mediante un contrato. La API

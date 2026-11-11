@@ -72,16 +72,34 @@ def test_epub_failure_rolls_back_book_and_chapters(
         for model in [Book, Chapter]
     ]
 
-    def fail_commit() -> None:
+    failed_sessions: list[Session] = []
+    rolled_back_sessions: list[Session] = []
+    original_rollback = Session.rollback
+
+    def fail_commit(session: Session) -> None:
+        # Patch the request session, not only the separate db fixture.
+        failed_sessions.append(session)
+        assert [
+            session.exec(select(func.count()).select_from(model)).one()
+            for model in [Book, Chapter]
+        ] == [before[0] + 1, before[1] + 2]
         raise SQLAlchemyError("Simulated failure after flush")
 
+    def track_rollback(session: Session) -> None:
+        rolled_back_sessions.append(session)
+        original_rollback(session)
+
     with monkeypatch.context() as patch:
-        patch.setattr(db, "commit", fail_commit)
+        patch.setattr(Session, "commit", fail_commit)
+        patch.setattr(Session, "rollback", track_rollback)
         with pytest.raises(SQLAlchemyError):
             client.post(
                 URL, headers=headers, files={"file": ("book.epub", make_epub())}
             )
-    assert [
-        db.exec(select(func.count()).select_from(model)).one()
-        for model in [Book, Chapter]
-    ] == before
+    assert len(failed_sessions) == 1
+    assert rolled_back_sessions == failed_sessions
+    with Session(db.get_bind()) as verification:
+        assert [
+            verification.exec(select(func.count()).select_from(model)).one()
+            for model in [Book, Chapter]
+        ] == before

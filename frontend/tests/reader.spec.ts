@@ -24,6 +24,7 @@ test.beforeEach(async ({ page }) => {
   )
   await page.route("**/api/v1/books/**", (route) => {
     const url = new URL(route.request().url())
+    if (url.pathname.endsWith("/progress")) return route.fulfill({ json: null })
     const entries = [chapterId, nextId].map((id, index) => ({
       id,
       book_id: bookId,

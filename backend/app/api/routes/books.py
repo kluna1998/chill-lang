@@ -2,7 +2,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile
-from sqlmodel import Session, col, func, select
+from sqlmodel import col, func, select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
@@ -23,32 +23,16 @@ from app.models import (
     SelectionExplanation,
 )
 from app.services.book_import import MAX_TXT_BYTES, BookImportError, parse_txt_book
-from app.services.book_persistence import persist_imported_book
+from app.services.book_persistence import (
+    get_owned_book,
+    get_owned_chapter,
+    persist_imported_book,
+)
 from app.services.contextual_explanation import ExplanationError, explain_selection
 from app.services.epub_import import MAX_EPUB_BYTES, parse_epub_book
 from app.services.french_nlp import InvalidSelection, NLPUnavailable, analyze_selection
 
 router = APIRouter(prefix="/books", tags=["books"])
-
-
-def _get_owned_book(session: Session, book_id: uuid.UUID, owner_id: uuid.UUID) -> Book:
-    statement = select(Book).where(Book.id == book_id, Book.owner_id == owner_id)
-    book = session.exec(statement).first()
-    if book is None:
-        raise HTTPException(status_code=404, detail="Book not found")
-    return book
-
-
-def _get_owned_chapter(
-    session: Session, book_id: uuid.UUID, chapter_id: uuid.UUID, owner_id: uuid.UUID
-) -> Chapter:
-    _get_owned_book(session, book_id, owner_id)
-    chapter = session.exec(
-        select(Chapter).where(Chapter.id == chapter_id, Chapter.book_id == book_id)
-    ).first()
-    if chapter is None:
-        raise HTTPException(status_code=404, detail="Chapter not found")
-    return chapter
 
 
 @router.post("/", response_model=BookPublic, status_code=201)
@@ -142,7 +126,7 @@ def get_book(
     current_user: CurrentUser,
     book_id: uuid.UUID,
 ) -> Book:
-    return _get_owned_book(session, book_id, current_user.id)
+    return get_owned_book(session, book_id, current_user.id)
 
 
 @router.patch("/{book_id}", response_model=BookPublic)
@@ -153,7 +137,7 @@ def update_book(
     book_id: uuid.UUID,
     book_in: BookUpdate,
 ) -> Book:
-    book = _get_owned_book(session, book_id, current_user.id)
+    book = get_owned_book(session, book_id, current_user.id)
     book.sqlmodel_update(book_in.model_dump(exclude_unset=True))
     session.add(book)
     session.commit()
@@ -168,7 +152,7 @@ def delete_book(
     current_user: CurrentUser,
     book_id: uuid.UUID,
 ) -> Message:
-    book = _get_owned_book(session, book_id, current_user.id)
+    book = get_owned_book(session, book_id, current_user.id)
     session.delete(book)
     session.commit()
     return Message(message="Book deleted successfully")
@@ -182,7 +166,7 @@ def create_chapter(
     book_id: uuid.UUID,
     chapter_in: ChapterCreate,
 ) -> Chapter:
-    book = _get_owned_book(session, book_id, current_user.id)
+    book = get_owned_book(session, book_id, current_user.id)
     chapter = Chapter.model_validate(chapter_in, update={"book_id": book.id})
     session.add(chapter)
     session.commit()
@@ -199,7 +183,7 @@ def read_chapters(
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> ChaptersPublic:
-    _get_owned_book(session, book_id, current_user.id)
+    get_owned_book(session, book_id, current_user.id)
     count = session.exec(
         select(func.count()).select_from(Chapter).where(Chapter.book_id == book_id)
     ).one()
@@ -224,7 +208,7 @@ def get_chapter(
     book_id: uuid.UUID,
     chapter_id: uuid.UUID,
 ) -> Chapter:
-    return _get_owned_chapter(session, book_id, chapter_id, current_user.id)
+    return get_owned_chapter(session, book_id, chapter_id, current_user.id)
 
 
 @router.post(
@@ -238,7 +222,7 @@ def analyze_chapter_selection(
     chapter_id: uuid.UUID,
     selection: SelectionAnalysisRequest,
 ) -> SelectionAnalysis:
-    chapter = _get_owned_chapter(session, book_id, chapter_id, current_user.id)
+    chapter = get_owned_chapter(session, book_id, chapter_id, current_user.id)
     try:
         return analyze_selection(
             chapter.content,
@@ -262,7 +246,7 @@ def update_chapter(
     chapter_id: uuid.UUID,
     chapter_in: ChapterUpdate,
 ) -> Chapter:
-    chapter = _get_owned_chapter(session, book_id, chapter_id, current_user.id)
+    chapter = get_owned_chapter(session, book_id, chapter_id, current_user.id)
     chapter.sqlmodel_update(chapter_in.model_dump(exclude_unset=True))
     session.add(chapter)
     session.commit()
@@ -278,7 +262,7 @@ def delete_chapter(
     book_id: uuid.UUID,
     chapter_id: uuid.UUID,
 ) -> Message:
-    chapter = _get_owned_chapter(session, book_id, chapter_id, current_user.id)
+    chapter = get_owned_chapter(session, book_id, chapter_id, current_user.id)
     session.delete(chapter)
     session.commit()
     return Message(message="Chapter deleted successfully")
@@ -295,7 +279,7 @@ def explain_chapter_selection(
     chapter_id: uuid.UUID,
     selection: SelectionAnalysisRequest,
 ) -> SelectionExplanation:
-    chapter = _get_owned_chapter(session, book_id, chapter_id, current_user.id)
+    chapter = get_owned_chapter(session, book_id, chapter_id, current_user.id)
     try:
         analysis = analyze_selection(
             chapter.content,

@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react"
 import { useEffect, useRef } from "react"
-
+import { ReadingPosition } from "./ReadingPosition"
 import { extractTextSelection, type TextSelectionContext } from "./selection"
 
 export function SelectableText({
@@ -41,13 +41,21 @@ export function SelectableText({
   }, [content, bookId, chapterId, onSelect])
 
   return (
-    <div
-      ref={root}
-      data-testid="chapter-content"
-      className="whitespace-pre-wrap break-words select-text"
-      style={style}
-    >
-      {content}
-    </div>
+    <>
+      <ReadingPosition
+        root={root}
+        content={content}
+        bookId={bookId}
+        chapterId={chapterId}
+      />
+      <div
+        ref={root}
+        data-testid="chapter-content"
+        className="whitespace-pre-wrap break-words select-text"
+        style={style}
+      >
+        {content}
+      </div>
+    </>
   )
 }

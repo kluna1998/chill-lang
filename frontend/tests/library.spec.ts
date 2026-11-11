@@ -76,6 +76,7 @@ test("Books can be imported, edited and deleted through the API", async ({
     const request = route.request()
     expect(request.headers().authorization).toBe("Bearer test-token")
     const url = new URL(request.url())
+    if (url.pathname.endsWith("/progress")) return route.fulfill({ json: null })
     if (
       request.method() === "GET" &&
       url.pathname === `/api/v1/books/${bookId}`
@@ -283,6 +284,7 @@ test("EPUB import uses the generated endpoint and opens the existing reader", as
   await page.route("**/api/v1/books/**", (route) => {
     const request = route.request()
     const path = new URL(request.url()).pathname
+    if (path.endsWith("/progress")) return route.fulfill({ json: null })
     if (request.method() === "POST") {
       expect(path).toBe("/api/v1/books/import-epub")
       expect(request.headers()["content-type"]).toContain("multipart/form-data")
@@ -318,13 +320,11 @@ test("EPUB import uses the generated endpoint and opens the existing reader", as
   await page.goto("/")
   await page.getByRole("button", { name: "Importar libro" }).click()
   const dialog = page.getByRole("dialog")
-  await dialog
-    .getByLabel("Archivo del libro")
-    .setInputFiles({
-      name: "livre.epub",
-      mimeType: "application/epub+zip",
-      buffer: Buffer.from("EPUB request fixture"),
-    })
+  await dialog.getByLabel("Archivo del libro").setInputFiles({
+    name: "livre.epub",
+    mimeType: "application/epub+zip",
+    buffer: Buffer.from("EPUB request fixture"),
+  })
   await expect(dialog.getByText("Formato: EPUB", { exact: true })).toBeVisible()
   await dialog.getByRole("button", { name: "Importar", exact: true }).click()
   await expect(dialog).not.toBeVisible()

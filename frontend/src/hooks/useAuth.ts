@@ -55,6 +55,8 @@ const useAuth = () => {
 
   const logout = () => {
     localStorage.removeItem("access_token")
+    // Personal vocabulary and progress must not survive into another account.
+    queryClient.clear()
     navigate({ to: "/login" })
   }
 

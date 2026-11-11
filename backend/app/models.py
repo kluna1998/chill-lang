@@ -4,7 +4,7 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, model_validator
 from pydantic import Field as PydanticField
-from sqlalchemy import DateTime, Text
+from sqlalchemy import DateTime, Text, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -202,6 +202,98 @@ class ChapterSummary(SQLModel):
 class ChaptersPublic(SQLModel):
     data: list[ChapterSummary]
     count: int
+
+
+class VocabularyCreate(SQLModel):
+    chapter_id: uuid.UUID
+    start_offset: int = Field(ge=0)
+    end_offset: int = Field(ge=1)
+    original_text: str = Field(min_length=1, max_length=512)
+    contextual_translation: str = Field(min_length=1, max_length=500)
+    context: str = Field(min_length=1, max_length=2000)
+    context_start_offset: int = Field(ge=0)
+    context_end_offset: int = Field(ge=1)
+    offset_unit: Literal["utf-16"] = "utf-16"
+
+    @field_validator("original_text", "contextual_translation")
+    @classmethod
+    def nonblank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Text cannot be blank")
+        return value
+
+
+class VocabularyEntry(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("owner_id", "chapter_id", "start_offset", "end_offset"),
+    )
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    owner_id: uuid.UUID = Field(foreign_key="user.id", ondelete="CASCADE", index=True)
+    book_id: uuid.UUID = Field(foreign_key="book.id", ondelete="CASCADE")
+    chapter_id: uuid.UUID = Field(foreign_key="chapter.id", ondelete="CASCADE")
+    original_text: str = Field(max_length=512)
+    contextual_translation: str = Field(max_length=500)
+    context: str = Field(sa_type=Text)
+    start_offset: int
+    end_offset: int
+    context_start_offset: int
+    context_end_offset: int
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+
+class VocabularyPublic(SQLModel):
+    id: uuid.UUID
+    owner_id: uuid.UUID
+    book_id: uuid.UUID
+    chapter_id: uuid.UUID
+    original_text: str
+    contextual_translation: str
+    context: str
+    start_offset: int
+    end_offset: int
+    context_start_offset: int
+    context_end_offset: int
+    offset_unit: Literal["utf-16"] = "utf-16"
+    created_at: datetime
+
+
+class VocabularyPublicList(SQLModel):
+    data: list[VocabularyPublic]
+    count: int
+
+
+class ReadingProgressUpdate(SQLModel):
+    chapter_id: uuid.UUID
+    position: int = Field(ge=0)
+    content_hash: str = PydanticField(pattern=r"^[0-9a-f]{64}$")
+    expected_version: int = Field(ge=0)
+    offset_unit: Literal["utf-16"] = "utf-16"
+
+
+class ReadingProgress(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("owner_id", "book_id"),)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    owner_id: uuid.UUID = Field(foreign_key="user.id", ondelete="CASCADE", index=True)
+    book_id: uuid.UUID = Field(foreign_key="book.id", ondelete="CASCADE")
+    chapter_id: uuid.UUID = Field(foreign_key="chapter.id", ondelete="CASCADE")
+    position: int
+    content_hash: str = Field(max_length=64)
+    version: int = Field(default=1)
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+
+class ReadingProgressPublic(SQLModel):
+    book_id: uuid.UUID
+    chapter_id: uuid.UUID
+    position: int
+    content_hash: str
+    version: int
+    offset_unit: Literal["utf-16"] = "utf-16"
+    updated_at: datetime
 
 
 # Generic message

@@ -2,13 +2,15 @@ from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import event
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlmodel import Session, func, select
 
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.models import Book, Chapter
 from app.services.book_import import MAX_TXT_BYTES
+from tests.utils.epub import make_epub
 from tests.utils.user import create_random_user
 
 TXT = "TITLE: Une aventure à Paris\nAUTHOR: Chill-Lang\n\n=== CHAPTER: Le départ ===\n\nBonjour !\n\n=== CHAPTER: La rencontre ===\nSalut !\n".encode()
@@ -82,12 +84,78 @@ def test_import_rolls_back_all_records(
     books_before = db.exec(select(func.count()).select_from(Book)).one()
     chapters_before = db.exec(select(func.count()).select_from(Chapter)).one()
 
-    def fail_commit() -> None:
+    failed_sessions: list[Session] = []
+    rolled_back_sessions: list[Session] = []
+    original_rollback = Session.rollback
+
+    def fail_commit(session: Session) -> None:
+        # Patch the request session, not only the separate db fixture.
+        failed_sessions.append(session)
+        assert [
+            session.exec(select(func.count()).select_from(model)).one()
+            for model in [Book, Chapter]
+        ] == [books_before + 1, chapters_before + 2]
         raise SQLAlchemyError("Simulated failure after flush")
 
+    def track_rollback(session: Session) -> None:
+        rolled_back_sessions.append(session)
+        original_rollback(session)
+
     with monkeypatch.context() as patch:
-        patch.setattr(db, "commit", fail_commit)
+        patch.setattr(Session, "commit", fail_commit)
+        patch.setattr(Session, "rollback", track_rollback)
         with pytest.raises(SQLAlchemyError):
             client.post(URL, headers=headers, files={"file": ("book.txt", TXT)})
-    assert db.exec(select(func.count()).select_from(Book)).one() == books_before
-    assert db.exec(select(func.count()).select_from(Chapter)).one() == chapters_before
+    assert len(failed_sessions) == 1
+    assert rolled_back_sessions == failed_sessions
+    with Session(db.get_bind()) as verification:
+        assert (
+            verification.exec(select(func.count()).select_from(Book)).one()
+            == books_before
+        )
+        assert (
+            verification.exec(select(func.count()).select_from(Chapter)).one()
+            == chapters_before
+        )
+
+
+@pytest.mark.parametrize("file_type", ["txt", "epub"])
+def test_import_database_constraint_failure_leaves_no_partial_records(
+    client: TestClient, db: Session, file_type: str
+) -> None:
+    headers = _headers(db)
+    before = [
+        db.exec(select(func.count()).select_from(model)).one()
+        for model in [Book, Chapter]
+    ]
+
+    def invalidate_second_chapter(
+        session: Session, _flush_context: object, _instances: object
+    ) -> None:
+        chapters = [record for record in session.new if isinstance(record, Chapter)]
+        assert len(chapters) == 2
+        # Let PostgreSQL reject a real NOT NULL violation during chapter insertion.
+        chapters[1].sqlmodel_update({"content": None})
+
+    event.listen(Session, "before_flush", invalidate_second_chapter)
+    try:
+        with pytest.raises(IntegrityError) as error:
+            client.post(
+                f"{settings.API_V1_STR}/books/import-{file_type}",
+                headers=headers,
+                files={
+                    "file": (
+                        f"book.{file_type}",
+                        TXT if file_type == "txt" else make_epub(),
+                    )
+                },
+            )
+    finally:
+        event.remove(Session, "before_flush", invalidate_second_chapter)
+    assert error.value.statement is not None
+    assert "INSERT INTO chapter" in error.value.statement
+    with Session(db.get_bind()) as verification:
+        assert [
+            verification.exec(select(func.count()).select_from(model)).one()
+            for model in [Book, Chapter]
+        ] == before

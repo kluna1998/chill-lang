@@ -4,6 +4,7 @@ import { AxiosError } from "axios"
 import { ChapterList } from "@/components/Chapters/ChapterList"
 import { Button } from "@/components/ui/button"
 import { useBook } from "@/hooks/useBookQueries"
+import { useReadingProgress } from "@/hooks/useReadingState"
 
 export const Route = createFileRoute("/_layout/books/$bookId/")({
   component: BookDetail,
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/_layout/books/$bookId/")({
 
 function BookDetail() {
   const { bookId } = Route.useParams()
+  const progress = useReadingProgress(bookId)
   const {
     data: book,
     error,
@@ -54,6 +56,28 @@ function BookDetail() {
               </p>
             </header>
             <ChapterList bookId={bookId} />
+            {progress.data && (
+              <Button asChild>
+                <Link
+                  to="/books/$bookId/chapters/$chapterId"
+                  params={{ bookId, chapterId: progress.data.chapter_id }}
+                >
+                  Continuar leyendo
+                </Link>
+              </Button>
+            )}
+            {progress.isError && (
+              <p role="alert">
+                No se ha podido recuperar el progreso.{" "}
+                <button
+                  type="button"
+                  className="underline"
+                  onClick={() => progress.refetch()}
+                >
+                  Reintentar
+                </button>
+              </p>
+            )}
           </>
         )
       )}

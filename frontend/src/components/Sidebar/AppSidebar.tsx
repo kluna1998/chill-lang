@@ -1,4 +1,4 @@
-import { BookOpen, Users } from "lucide-react"
+import { BookOpen, NotebookPen, Users } from "lucide-react"
 
 import { SidebarAppearance } from "@/components/Common/Appearance"
 import { Logo } from "@/components/Common/Logo"
@@ -14,6 +14,7 @@ import { User } from "./User"
 
 const baseItems: Item[] = [
   { icon: BookOpen, title: "Mi biblioteca", path: "/" },
+  { icon: NotebookPen, title: "Mi vocabulario", path: "/vocabulary" },
 ]
 
 export function AppSidebar() {

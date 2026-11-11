@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { booksAnalyzeChapterSelectionData, booksAnalyzeChapterSelectionErrors, booksAnalyzeChapterSelectionResponses, booksCreateBookData, booksCreateBookErrors, booksCreateBookResponses, booksCreateChapterData, booksCreateChapterErrors, booksCreateChapterResponses, booksDeleteBookData, booksDeleteBookErrors, booksDeleteBookResponses, booksDeleteChapterData, booksDeleteChapterErrors, booksDeleteChapterResponses, booksExplainChapterSelectionData, booksExplainChapterSelectionErrors, booksExplainChapterSelectionResponses, booksGetBookData, booksGetBookErrors, booksGetBookResponses, booksGetChapterData, booksGetChapterErrors, booksGetChapterResponses, booksImportEpubBookData, booksImportEpubBookErrors, booksImportEpubBookResponses, booksImportTxtBookData, booksImportTxtBookErrors, booksImportTxtBookResponses, booksReadBooksData, booksReadBooksErrors, booksReadBooksResponses, booksReadChaptersData, booksReadChaptersErrors, booksReadChaptersResponses, booksUpdateBookData, booksUpdateBookErrors, booksUpdateBookResponses, booksUpdateChapterData, booksUpdateChapterErrors, booksUpdateChapterResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
+import type { booksAnalyzeChapterSelectionData, booksAnalyzeChapterSelectionErrors, booksAnalyzeChapterSelectionResponses, booksCreateBookData, booksCreateBookErrors, booksCreateBookResponses, booksCreateChapterData, booksCreateChapterErrors, booksCreateChapterResponses, booksDeleteBookData, booksDeleteBookErrors, booksDeleteBookResponses, booksDeleteChapterData, booksDeleteChapterErrors, booksDeleteChapterResponses, booksExplainChapterSelectionData, booksExplainChapterSelectionErrors, booksExplainChapterSelectionResponses, booksGetBookData, booksGetBookErrors, booksGetBookResponses, booksGetChapterData, booksGetChapterErrors, booksGetChapterResponses, booksImportEpubBookData, booksImportEpubBookErrors, booksImportEpubBookResponses, booksImportTxtBookData, booksImportTxtBookErrors, booksImportTxtBookResponses, booksReadBooksData, booksReadBooksErrors, booksReadBooksResponses, booksReadChaptersData, booksReadChaptersErrors, booksReadChaptersResponses, booksUpdateBookData, booksUpdateBookErrors, booksUpdateBookResponses, booksUpdateChapterData, booksUpdateChapterErrors, booksUpdateChapterResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, readingDeleteVocabularyData, readingDeleteVocabularyErrors, readingDeleteVocabularyResponses, readingGetProgressData, readingGetProgressErrors, readingGetProgressResponses, readingListVocabularyData, readingListVocabularyErrors, readingListVocabularyResponses, readingSaveProgressData, readingSaveProgressErrors, readingSaveProgressResponses, readingSaveVocabularyData, readingSaveVocabularyErrors, readingSaveVocabularyResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -559,6 +559,76 @@ export class BooksService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/books/{book_id}/chapters/{chapter_id}/explain',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+}
+
+export class ReadingService {
+    /**
+     * List Vocabulary
+     */
+    public static listVocabulary<ThrowOnError extends boolean = true>(options?: Options<readingListVocabularyData, ThrowOnError>) {
+        return (options?.client ?? client).get<readingListVocabularyResponses, readingListVocabularyErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/vocabulary/',
+            ...options
+        });
+    }
+
+    /**
+     * Save Vocabulary
+     */
+    public static saveVocabulary<ThrowOnError extends boolean = true>(options: Options<readingSaveVocabularyData, ThrowOnError>) {
+        return (options.client ?? client).post<readingSaveVocabularyResponses, readingSaveVocabularyErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/vocabulary/',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+
+    /**
+     * Delete Vocabulary
+     */
+    public static deleteVocabulary<ThrowOnError extends boolean = true>(options: Options<readingDeleteVocabularyData, ThrowOnError>) {
+        return (options.client ?? client).delete<readingDeleteVocabularyResponses, readingDeleteVocabularyErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/vocabulary/{entry_id}',
+            ...options
+        });
+    }
+
+    /**
+     * Get Progress
+     */
+    public static getProgress<ThrowOnError extends boolean = true>(options: Options<readingGetProgressData, ThrowOnError>) {
+        return (options.client ?? client).get<readingGetProgressResponses, readingGetProgressErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/books/{book_id}/progress',
+            ...options
+        });
+    }
+
+    /**
+     * Save Progress
+     */
+    public static saveProgress<ThrowOnError extends boolean = true>(options: Options<readingSaveProgressData, ThrowOnError>) {
+        return (options.client ?? client).put<readingSaveProgressResponses, readingSaveProgressErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/books/{book_id}/progress',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
