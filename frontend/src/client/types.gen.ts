@@ -35,6 +35,74 @@ export type Body_login_login_access_token = {
 };
 
 /**
+ * BookCreate
+ */
+export type BookCreate = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Author
+     */
+    author?: string | null;
+};
+
+/**
+ * BookPublic
+ */
+export type BookPublic = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Author
+     */
+    author?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Owner Id
+     */
+    owner_id: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * BookUpdate
+ */
+export type BookUpdate = {
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Author
+     */
+    author?: string | null;
+};
+
+/**
+ * BooksPublic
+ */
+export type BooksPublic = {
+    /**
+     * Data
+     */
+    data: Array<BookPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * HTTPValidationError
  */
 export type HTTPValidationError = {
@@ -920,6 +988,155 @@ export type itemsUpdateItemResponses = {
 };
 
 export type itemsUpdateItemResponse = itemsUpdateItemResponses[keyof itemsUpdateItemResponses];
+
+export type booksReadBooksData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/books/';
+};
+
+export type booksReadBooksErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksReadBooksError = booksReadBooksErrors[keyof booksReadBooksErrors];
+
+export type booksReadBooksResponses = {
+    /**
+     * Successful Response
+     */
+    200: BooksPublic;
+};
+
+export type booksReadBooksResponse = booksReadBooksResponses[keyof booksReadBooksResponses];
+
+export type booksCreateBookData = {
+    body: BookCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/books/';
+};
+
+export type booksCreateBookErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksCreateBookError = booksCreateBookErrors[keyof booksCreateBookErrors];
+
+export type booksCreateBookResponses = {
+    /**
+     * Successful Response
+     */
+    201: BookPublic;
+};
+
+export type booksCreateBookResponse = booksCreateBookResponses[keyof booksCreateBookResponses];
+
+export type booksDeleteBookData = {
+    body?: never;
+    path: {
+        /**
+         * Book Id
+         */
+        book_id: string;
+    };
+    query?: never;
+    url: '/api/v1/books/{book_id}';
+};
+
+export type booksDeleteBookErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksDeleteBookError = booksDeleteBookErrors[keyof booksDeleteBookErrors];
+
+export type booksDeleteBookResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type booksDeleteBookResponse = booksDeleteBookResponses[keyof booksDeleteBookResponses];
+
+export type booksGetBookData = {
+    body?: never;
+    path: {
+        /**
+         * Book Id
+         */
+        book_id: string;
+    };
+    query?: never;
+    url: '/api/v1/books/{book_id}';
+};
+
+export type booksGetBookErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksGetBookError = booksGetBookErrors[keyof booksGetBookErrors];
+
+export type booksGetBookResponses = {
+    /**
+     * Successful Response
+     */
+    200: BookPublic;
+};
+
+export type booksGetBookResponse = booksGetBookResponses[keyof booksGetBookResponses];
+
+export type booksUpdateBookData = {
+    body: BookUpdate;
+    path: {
+        /**
+         * Book Id
+         */
+        book_id: string;
+    };
+    query?: never;
+    url: '/api/v1/books/{book_id}';
+};
+
+export type booksUpdateBookErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type booksUpdateBookError = booksUpdateBookErrors[keyof booksUpdateBookErrors];
+
+export type booksUpdateBookResponses = {
+    /**
+     * Successful Response
+     */
+    200: BookPublic;
+};
+
+export type booksUpdateBookResponse = booksUpdateBookResponses[keyof booksUpdateBookResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;

@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 
-from pydantic import EmailStr
+from pydantic import EmailStr, field_validator
 from sqlalchemy import DateTime
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -122,8 +122,21 @@ class Book(BookBase, table=True):
     )
     owner: User | None = Relationship(back_populates="books")
 
+
 class BookCreate(BookBase):
     pass
+
+
+class BookUpdate(SQLModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    author: str | None = Field(default=None, max_length=255)
+
+    @field_validator("title")
+    @classmethod
+    def title_must_not_be_null(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Title cannot be null")
+        return value
 
 
 class BookPublic(BookBase):
@@ -135,6 +148,7 @@ class BookPublic(BookBase):
 class BooksPublic(SQLModel):
     data: list[BookPublic]
     count: int
+
 
 # Generic message
 class Message(SQLModel):
